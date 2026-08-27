@@ -24,7 +24,7 @@ extension Process {
 
         case unrecognizedStatus
 
-        case capture(Error_Primitives.Error.Code)
+        case capture(Error.Error.Code)
 
         case streamPolicyUnsupported
 

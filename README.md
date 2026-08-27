@@ -65,7 +65,7 @@ Add swift-process to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/swift-foundations/swift-process.git", branch: "main")
+    .package(url: "https://github.com/swift-compositions/swift-process.git", branch: "main")
 ]
 ```
 
@@ -176,9 +176,9 @@ do throws(Process.Error) {
 
 ## Related Packages
 
-- [swift-posix](https://github.com/swift-foundations/swift-posix) — POSIX kernel surface this package composes for spawning and waiting.
-- [swift-windows](https://github.com/swift-foundations/swift-windows) — Win32 kernel surface backing the Windows path.
-- [swift-kernel](https://github.com/swift-foundations/swift-kernel) — Cross-platform kernel facade; re-exported by this package for environment access (public, no tagged release yet).
+- [swift-posix](https://github.com/swift-compositions/swift-posix) — POSIX kernel surface this package composes for spawning and waiting.
+- [swift-windows](https://github.com/swift-compositions/swift-windows) — Win32 kernel surface backing the Windows path.
+- [swift-kernel](https://github.com/swift-compositions/swift-kernel) — Cross-platform kernel facade; re-exported by this package for environment access (public, no tagged release yet).
 
 ---
 

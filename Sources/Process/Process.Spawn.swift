@@ -1,7 +1,7 @@
 internal import Strings
 
 #if !os(Windows)
-    internal import Path_Primitives
+    internal import Path
     internal import POSIX_Kernel
 #endif
 

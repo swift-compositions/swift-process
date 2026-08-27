@@ -16,13 +16,13 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/swift-primitives/swift-path-primitives.git",
+            url: "https://github.com/swift-molecules/swift-path.git",
             branch: "main"
         ),
-        .package(url: "https://github.com/swift-foundations/swift-kernel.git", branch: "main"),
-        .package(url: "https://github.com/swift-foundations/swift-posix.git", branch: "main"),
-        .package(url: "https://github.com/swift-foundations/swift-windows.git", branch: "main"),
-        .package(url: "https://github.com/swift-foundations/swift-strings.git", branch: "main"),
+        .package(url: "https://github.com/swift-compositions/swift-kernel.git", branch: "main"),
+        .package(url: "https://github.com/swift-compositions/swift-posix.git", branch: "main"),
+        .package(url: "https://github.com/swift-compositions/swift-windows.git", branch: "main"),
+        .package(url: "https://github.com/swift-compositions/swift-strings.git", branch: "main"),
         .package(url: "https://github.com/swift-iso/swift-iso-9945.git", branch: "main"),
     ],
     targets: [
@@ -30,7 +30,7 @@ let package = Package(
             name: "Process",
             dependencies: [
                 .product(name: "Kernel", package: "swift-kernel"),
-                .product(name: "Path Primitives", package: "swift-path-primitives"),
+                .product(name: "Path", package: "swift-path"),
                 .product(
                     name: "POSIX Kernel",
                     package: "swift-posix",

@@ -67,7 +67,7 @@ extension Process {
 
                 let waitResult = unsafe WaitForSingleObject(processHandle, INFINITE)
                 guard waitResult == WAIT_OBJECT_0 else {
-                    let code: Error_Primitives.Error.Code = .win32(GetLastError())
+                    let code: Error.Error.Code = .win32(GetLastError())
                     throw .wait(.create(code))
                 }
 
@@ -75,7 +75,7 @@ extension Process {
                 let got = unsafe GetExitCodeProcess(processHandle, &exitCode)
 
                 guard got else {
-                    let code: Error_Primitives.Error.Code = .win32(GetLastError())
+                    let code: Error.Error.Code = .win32(GetLastError())
                     throw .wait(.create(code))
                 }
 

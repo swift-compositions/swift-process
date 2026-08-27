@@ -1,6 +1,6 @@
 #if !os(Windows)
 
-    internal import Path_Primitives
+    internal import Path
     internal import POSIX_Kernel
 
     extension Process.Spawn.Executable {

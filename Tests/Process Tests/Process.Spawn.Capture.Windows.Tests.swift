@@ -51,7 +51,7 @@
                     fails with `ERROR_GEN_FAILURE` (31). This is the suite's only both-pipes \
                     configuration and therefore the only test the defect reaches; every \
                     single-pipe capture test spawns and captures correctly. Tracked here as \
-                    swift-foundations/swift-process#6 — re-enable once the owning fix lands \
+                    swift-compositions/swift-process#6 — re-enable once the owning fix lands \
                     upstream.
                     """
                 )
