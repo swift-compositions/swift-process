@@ -16,7 +16,7 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/swift-molecules/swift-path.git",
+            url: "https://github.com/swift-atoms/swift-path.git",
             branch: "main"
         ),
         .package(url: "https://github.com/swift-compositions/swift-kernel.git", branch: "main"),

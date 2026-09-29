@@ -330,7 +330,7 @@
 
         @usableFromInline
         internal static func _processErrorFromCode(
-            _ code: Error.Error.Code
+            _ code: Error::Error.Code
         ) -> Process.Error.Kernel {
             .create(code)
         }

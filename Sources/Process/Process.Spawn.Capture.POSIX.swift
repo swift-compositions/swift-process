@@ -272,7 +272,7 @@
         @usableFromInline
         internal static func _closeErrorCode(
             _ error: ISO_9945.Kernel.Close.Error
-        ) -> Error.Error.Code {
+        ) -> Error::Error.Code {
             switch error {
             case .handle(let e): return e.code
             case .platform(let e): return e.code
@@ -556,7 +556,7 @@
         @usableFromInline
         internal static func _threadErrorCode(
             _ error: ISO_9945.Kernel.Thread.Error
-        ) -> Error.Error.Code {
+        ) -> Error::Error.Code {
             switch error {
             case .create(let code): return code
             case .join(let code): return code
