@@ -355,7 +355,7 @@
                 if stdoutDone { (entries[0].descriptor = -1) }
                 if stderrDone { (entries[1].descriptor = -1) }
 
-                do throws(Error.Error) {
+                do throws(Error::Error) {
                     _ = try POSIX.Kernel.Poll.poll(&entries, timeout: -1)
                 } catch {
                     throw .capture(error.code)
