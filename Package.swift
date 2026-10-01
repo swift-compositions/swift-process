@@ -61,6 +61,8 @@ let package = Package(
             dependencies: [
                 "Process",
                 .product(name: "ISO 9945 Core", package: "swift-iso-9945"),
+                .product(name: "ISO 9945 Kernel Process", package: "swift-iso-9945",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .visionOS, .linux])),
                 .product(name: "POSIX Kernel", package: "swift-posix",
                     condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .visionOS, .linux])),
             ]
