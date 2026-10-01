@@ -37,8 +37,13 @@
             var template = Array("/tmp/process-isolation-XXXXXX".utf8CString)
             let descriptor = template.withUnsafeMutableBufferPointer { mkstemp($0.baseAddress!) }
             guard descriptor >= 0 else { throw Failure(description: "mkstemp failed, errno \(errno)") }
-            guard close(descriptor) == 0 else { throw Failure(description: "close(\(descriptor)) failed, errno \(errno)") }
-            return template.withUnsafeBufferPointer { Swift.String(cString: $0.baseAddress!) }
+            let path = template.withUnsafeBufferPointer { Swift.String(cString: $0.baseAddress!) }
+            guard close(descriptor) == 0 else {
+                let error = errno
+                unlink(path)
+                throw Failure(description: "close(\(descriptor)) failed, errno \(error)")
+            }
+            return path
         }
 
         static func read(_ path: Swift.String) throws -> Swift.String {
@@ -110,39 +115,31 @@
         struct `Isolation Tests` {
 
             @Test
-            func `an unisolated low-level spawn inherits the exact retained sentinel`() throws {
-                let output = try IsolationFixture.uniqueOutput()
-                defer { unlink(output) }
+            func `one retained sentinel reaches an unisolated low-level child and not an isolated one with redirected stdio`() throws {
+                let control = try IsolationFixture.uniqueOutput()
+                defer { unlink(control) }
+                let isolated = try IsolationFixture.uniqueOutput()
+                defer { unlink(isolated) }
                 let sentinel = try POSIX.Kernel.Pipe.pipe()
                 let descriptor = sentinel.read._rawValue
                 let expected = try IsolationFixture.identity(of: descriptor)
 
-                let exit = try IsolationFixture.spawn(
-                    IsolationFixture.probe(descriptor), output: output, stdio: .redirected, isolated: false
+                let controlExit = try IsolationFixture.spawn(
+                    IsolationFixture.probe(descriptor), output: control, stdio: .redirected, isolated: false
                 )
-                _ = consume sentinel
-                let reported = try IsolationFixture.read(output)
-
-                #expect(exit == .init(normal: true, code: 0), "control child \(exit): \(reported)")
-                #expect(reported == expected + "\n", "control child reported \(reported) for fd \(descriptor), expected \(expected)")
-            }
-
-            @Test
-            func `an isolated low-level spawn with redirected stdio does not inherit the same retained sentinel`() throws {
-                let output = try IsolationFixture.uniqueOutput()
-                defer { unlink(output) }
-                let sentinel = try POSIX.Kernel.Pipe.pipe()
-                let descriptor = sentinel.read._rawValue
-                _ = try IsolationFixture.identity(of: descriptor)
-
-                let exit = try IsolationFixture.spawn(
-                    IsolationFixture.probe(descriptor), output: output, stdio: .redirected, isolated: true
+                let isolatedExit = try IsolationFixture.spawn(
+                    IsolationFixture.probe(descriptor), output: isolated, stdio: .redirected, isolated: true
                 )
+                let retained = try IsolationFixture.identity(of: descriptor)
                 _ = consume sentinel
-                let reported = try IsolationFixture.read(output)
+                let controlReport = try IsolationFixture.read(control)
+                let isolatedReport = try IsolationFixture.read(isolated)
 
-                #expect(exit == .init(normal: true, code: 1), "isolated child \(exit): \(reported)")
-                #expect(reported.contains("/dev/fd/\(descriptor)") && reported.contains("Bad file descriptor"), "unexpected probe output: \(reported)")
+                #expect(retained == expected, "the sentinel changed identity between spawns: \(expected) then \(retained)")
+                #expect(controlExit == .init(normal: true, code: 0), "control child \(controlExit): \(controlReport)")
+                #expect(controlReport == expected + "\n", "control child reported \(controlReport) for fd \(descriptor), expected \(expected)")
+                #expect(isolatedExit == .init(normal: true, code: 1), "isolated child \(isolatedExit): \(isolatedReport)")
+                #expect(isolatedReport.contains("/dev/fd/\(descriptor)") && isolatedReport.contains("Bad file descriptor"), "unexpected probe output: \(isolatedReport)")
             }
 
             @Test
