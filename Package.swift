@@ -59,7 +59,9 @@ let package = Package(
         .testTarget(
             name: "Process Tests",
             dependencies: [
-                "Process"
+                "Process",
+                .product(name: "POSIX Kernel", package: "swift-posix",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .visionOS, .linux])),
             ]
         ),
     ],

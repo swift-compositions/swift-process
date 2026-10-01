@@ -48,7 +48,7 @@
             var actions = try _makeActions()
             try _addChdir(&actions, cwd: configuration.workingDirectory)
 
-            let pid = try _spawnWithActions(configuration, actions: actions)
+            let pid = try _spawnWithActions(configuration, actions: &actions)
             let watchdog = try _armWatchdog(pid: pid, timeout: configuration.timeout)
             let handle = Process.Handle(processID: pid)
             let status: Process.Status
@@ -78,7 +78,7 @@
 
             try _addChdir(&actions, cwd: configuration.workingDirectory)
 
-            let pid = try _spawnWithActions(configuration, actions: actions)
+            let pid = try _spawnWithActions(configuration, actions: &actions)
             let stdoutRead = try _closeWriteEnd(stdoutPipe)
             let watchdog = try _armWatchdog(pid: pid, timeout: configuration.timeout)
 
@@ -118,7 +118,7 @@
 
             try _addChdir(&actions, cwd: configuration.workingDirectory)
 
-            let pid = try _spawnWithActions(configuration, actions: actions)
+            let pid = try _spawnWithActions(configuration, actions: &actions)
             let stderrRead = try _closeWriteEnd(stderrPipe)
             let watchdog = try _armWatchdog(pid: pid, timeout: configuration.timeout)
 
@@ -161,7 +161,7 @@
 
             try _addChdir(&actions, cwd: configuration.workingDirectory)
 
-            let pid = try _spawnWithActions(configuration, actions: actions)
+            let pid = try _spawnWithActions(configuration, actions: &actions)
             let stdoutRead = try _closeWriteEnd(stdoutPipe)
             let stderrRead = try _closeWriteEnd(stderrPipe)
             let watchdog = try _armWatchdog(pid: pid, timeout: configuration.timeout)
@@ -240,8 +240,14 @@
         @usableFromInline
         internal static func _spawnWithActions(
             _ configuration: Configuration,
-            actions: borrowing ISO_9945.Kernel.Process.Spawn.Actions
+            actions: inout ISO_9945.Kernel.Process.Spawn.Actions
         ) throws(Process.Error) -> ISO_9945.Kernel.Process.ID {
+            let isolated: Bool
+            do throws(ISO_9945.Kernel.Process.Error) {
+                isolated = try actions.isolate()
+            } catch {
+                throw .spawn(error)
+            }
 
             let vector = try _spawnVector(configuration)
             let envp = _flattenEnvironment(configuration.environment)
@@ -255,7 +261,8 @@
                         path: vectorPtr[0]!,
                         argv: vectorPtr + 1,
                         envp: envpPtr,
-                        actions: actions
+                        actions: actions,
+                        isolated: isolated
                     )
                 }
             } catch {

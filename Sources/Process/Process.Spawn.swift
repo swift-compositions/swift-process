@@ -19,31 +19,8 @@ extension Process.Spawn {
 
         #if !os(Windows)
 
-            let vector = try _spawnVector(configuration)
-            let envp = _flattenEnvironment(configuration.environment)
-
-            let pid: ISO_9945.Kernel.Process.ID
-            do throws(Path.String.Error<ISO_9945.Kernel.Process.Error>) {
-                pid = try unsafe Path.scope.array(vector, envp) {
-                    (
-                        vectorPtr: UnsafePointer<UnsafePointer<Path.Char>?>,
-                        envpPtr: UnsafePointer<UnsafePointer<Path.Char>?>
-                    ) throws(ISO_9945.Kernel.Process.Error) -> ISO_9945.Kernel.Process.ID in
-                    try unsafe POSIX.Kernel.Process.Spawn.spawn(
-                        path: unsafe vectorPtr[0]!,
-                        argv: unsafe vectorPtr + 1,
-                        envp: envpPtr
-                    )
-                }
-            } catch {
-                switch error {
-                case .conversion(.interiorNUL(let index)):
-                    throw .invalidPath(index: _spawnVectorIndex(index))
-
-                case .body(let posixError):
-                    throw .spawn(posixError)
-                }
-            }
+            var actions = try _makeActions()
+            let pid = try _spawnWithActions(configuration, actions: &actions)
 
             return Process.Handle(processID: pid)
         #else
