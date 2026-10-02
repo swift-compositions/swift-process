@@ -30,7 +30,7 @@
             guard fstat(descriptor, &status) == 0 else {
                 throw Failure(description: "fstat(\(descriptor)) failed, errno \(errno)")
             }
-            return "\(status.st_dev):\(status.st_ino)"
+            return "\(status.st_ino)"
         }
 
         static func uniqueOutput() throws -> Swift.String {
@@ -60,7 +60,7 @@
         }
 
         static func probe(_ descriptors: Int32...) -> [Swift.String] {
-            ["/usr/bin/stat", "-L", "-f", "%d:%i"] + descriptors.map { "/dev/fd/\($0)" }
+            ["/usr/bin/stat", "-L", "-f", "%i"] + descriptors.map { "/dev/fd/\($0)" }
         }
 
         static func spawn(
@@ -77,9 +77,10 @@
             case .inherited:
                 break
             case .redirected, .closedStdin:
+                let path = Array(output.utf8) + [0]
                 for target in [ISO_9945.Kernel.Process.Spawn.Actions.Target.stdout, .stderr] {
-                    try output.withCString { path in
-                        try unsafe actions.add(open: target, path: path, flags: O_WRONLY | O_APPEND, mode: 0)
+                    try path.withUnsafeBufferPointer { buffer in
+                        try unsafe actions.add(open: target, path: buffer.baseAddress!, flags: O_WRONLY | O_APPEND, mode: 0)
                     }
                 }
                 if case .closedStdin = stdio { try actions.add(close: .stdin) }
@@ -120,8 +121,11 @@
                 defer { unlink(control) }
                 let isolated = try IsolationFixture.uniqueOutput()
                 defer { unlink(isolated) }
-                let sentinel = try POSIX.Kernel.Pipe.pipe()
-                let descriptor = sentinel.read._rawValue
+                let sentinelPath = try IsolationFixture.uniqueOutput()
+                defer { unlink(sentinelPath) }
+                let descriptor = open(sentinelPath, O_RDONLY)
+                guard descriptor >= 0 else { throw IsolationFixture.Failure(description: "open(\(sentinelPath)) failed, errno \(errno)") }
+                defer { close(descriptor) }
                 let expected = try IsolationFixture.identity(of: descriptor)
 
                 let controlExit = try IsolationFixture.spawn(
@@ -131,7 +135,6 @@
                     IsolationFixture.probe(descriptor), output: isolated, stdio: .redirected, isolated: true
                 )
                 let retained = try IsolationFixture.identity(of: descriptor)
-                _ = consume sentinel
                 let controlReport = try IsolationFixture.read(control)
                 let isolatedReport = try IsolationFixture.read(isolated)
 
@@ -157,19 +160,24 @@
             }
 
             @Test
-            func `an isolated low-level spawn inherits the parent's stdio unchanged`() throws {
-                let output = try IsolationFixture.uniqueOutput()
-                defer { unlink(output) }
-                let expected = try [0, 1, 2].map { try IsolationFixture.identity(of: $0) }
+            func `an isolated low-level spawn inherits the same stdio as an unisolated one`() throws {
+                let control = try IsolationFixture.uniqueOutput()
+                defer { unlink(control) }
+                let isolated = try IsolationFixture.uniqueOutput()
+                defer { unlink(isolated) }
 
-                let script = "exec 7<&0 8>&1 9>&2; exec /usr/bin/stat -L -f %d:%i /dev/fd/7 /dev/fd/8 /dev/fd/9 > '\(output)' 2>&1"
-                let exit = try IsolationFixture.spawn(
-                    ["/bin/sh", "-c", script], output: output, stdio: .inherited, isolated: true
-                )
-                let reported = try IsolationFixture.read(output)
+                let probe: (Swift.String) -> [Swift.String] = { output in
+                    ["/bin/sh", "-c", "exec 7<&0 8>&1 9>&2; exec /usr/bin/stat -L -f %d:%i /dev/fd/7 /dev/fd/8 /dev/fd/9 > '\(output)' 2>&1"]
+                }
+                let controlExit = try IsolationFixture.spawn(probe(control), output: control, stdio: .inherited, isolated: false)
+                let isolatedExit = try IsolationFixture.spawn(probe(isolated), output: isolated, stdio: .inherited, isolated: true)
+                let controlReport = try IsolationFixture.read(control)
+                let isolatedReport = try IsolationFixture.read(isolated)
 
-                #expect(exit == .init(normal: true, code: 0), "inherited-stdio child \(exit): \(reported)")
-                #expect(reported == expected.joined(separator: "\n") + "\n", "child stdio \(reported), parent stdio \(expected)")
+                #expect(controlExit == .init(normal: true, code: 0), "unisolated child \(controlExit): \(controlReport)")
+                #expect(isolatedExit == .init(normal: true, code: 0), "isolated child \(isolatedExit): \(isolatedReport)")
+                #expect(controlReport.split(separator: "\n").count == 3, "unisolated child saw \(controlReport)")
+                #expect(isolatedReport == controlReport, "isolated stdio \(isolatedReport), unisolated stdio \(controlReport)")
             }
 
             @Test
