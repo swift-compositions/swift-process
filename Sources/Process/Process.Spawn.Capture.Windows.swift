@@ -2,6 +2,7 @@
 
     internal import Windows_Kernel_File
     internal import Windows_Kernel_Process
+    internal import Windows_Kernel_Thread
     internal import WinSDK
 
     extension Process.Spawn {
@@ -92,8 +93,27 @@
             let stdoutRead = try _closeWriteEnd(stdoutPipe)
             let stderrRead = try _closeWriteEnd(stderrPipe)
 
-            let capturedStdout = try _drainBytes(stdoutRead)
-            let capturedStderr = try _drainBytes(stderrRead)
+            let stderrDrain = _Drain()
+            let stderrRaw = stderrRead._rawValue
+            let drainThread: Windows.`32`.Kernel.Thread.Handle
+            do throws(Windows.`32`.Kernel.Thread.Error) {
+                drainThread = try Windows.`32`.Kernel.Thread.create {
+                    stderrDrain.result = Process.Spawn._drainRawHandle(stderrRaw)
+                }
+            } catch {
+                switch error {
+                case .create(let err):
+                    throw .capture(err.code)
+                }
+            }
+
+            let stdoutResult = _drainRawHandle(stdoutRead._rawValue)
+            drainThread.join()
+            _ = consume stdoutRead
+            _ = consume stderrRead
+
+            let capturedStdout = try stdoutResult.get()
+            let capturedStderr = try stderrDrain.result.get()
 
             let handle = Process.Handle(processInfo: consume result)
             let status = try handle.wait()
@@ -279,12 +299,30 @@
         internal static func _drainBytes(
             _ descriptor: consuming Windows.`32`.Kernel.Descriptor
         ) throws(Process.Error) -> [UInt8] {
+            let drained = _drainRawHandle(descriptor._rawValue)
+            _ = consume descriptor
+            return try drained.get()
+        }
+
+        @usableFromInline
+        internal final class _Drain: @unchecked Sendable {
+            @usableFromInline
+            internal var result: Result<[UInt8], Process.Error> = .success([])
+
+            @usableFromInline
+            internal init() {}
+        }
+
+        @usableFromInline
+        internal static func _drainRawHandle(
+            _ rawValue: UInt
+        ) -> Result<[UInt8], Process.Error> {
             var buffer: [UInt8] = []
             var chunk = [UInt8](repeating: 0, count: 4096)
 
-            let handle = unsafe UnsafeMutableRawPointer(bitPattern: descriptor._rawValue)
+            let handle = unsafe UnsafeMutableRawPointer(bitPattern: rawValue)
             guard let handle else {
-                throw .capture(.win32(UInt32(ERROR_INVALID_HANDLE)))
+                return .failure(.capture(.win32(UInt32(ERROR_INVALID_HANDLE))))
             }
 
             while true {
@@ -303,14 +341,13 @@
                     if err == ERROR_BROKEN_PIPE {
                         break
                     }
-                    throw .capture(.win32(err))
+                    return .failure(.capture(.win32(err)))
                 }
                 if bytesRead == 0 { break }
                 buffer.append(contentsOf: chunk.prefix(Int(bytesRead)))
             }
 
-            _ = consume descriptor
-            return buffer
+            return .success(buffer)
         }
 
         internal static func _flattenWideEnvironment(
