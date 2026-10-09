@@ -52,6 +52,11 @@ let package = Package(
                     package: "swift-windows",
                     condition: .when(platforms: [.windows])
                 ),
+                .product(
+                    name: "Windows Kernel Thread",
+                    package: "swift-windows",
+                    condition: .when(platforms: [.windows])
+                ),
                 .product(name: "Strings", package: "swift-strings"),
             ],
             path: "Sources/Process"
