@@ -1,5 +1,6 @@
 #if os(Windows)
     import Testing
+    import WinSDK
     @testable import Process
 
     extension Process.Spawn.Test {
@@ -151,6 +152,68 @@
                 )
             )
             #expect(output.status == .signaled(signal: 9))
+        }
+
+        @Test(.timeLimit(.minutes(1)))
+        func `normal timed return preserves a continuing descendant`() throws(Process.Error) {
+            let parent = unsafe GetCurrentProcessId()
+            let script = #"""
+                Add-Type @'
+                using System;
+                using System.Runtime.InteropServices;
+                public static class Handles {
+                    [DllImport("kernel32.dll", SetLastError=true)]
+                    public static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+                    [DllImport("kernel32.dll", SetLastError=true)]
+                    public static extern bool DuplicateHandle(IntPtr source, IntPtr handle,
+                        IntPtr target, out IntPtr copy, uint access, bool inherit, uint options);
+                    [DllImport("kernel32.dll")]
+                    public static extern IntPtr GetCurrentProcess();
+                    [DllImport("kernel32.dll")]
+                    public static extern bool CloseHandle(IntPtr handle);
+                }
+                '@
+                $target = [Handles]::OpenProcess(0x40, $false, \#(parent))
+                if ($target -eq [IntPtr]::Zero) { exit 2 }
+                $s = New-Object System.Diagnostics.ProcessStartInfo
+                $s.FileName = 'C:\Windows\System32\ping.exe'
+                $s.Arguments = '-n 21 127.0.0.1'
+                $s.UseShellExecute = $false
+                $s.CreateNoWindow = $true
+                $s.RedirectStandardOutput = $true
+                $s.RedirectStandardError = $true
+                $p = [System.Diagnostics.Process]::Start($s)
+                $copy = [IntPtr]::Zero
+                $ok = [Handles]::DuplicateHandle([Handles]::GetCurrentProcess(), $p.Handle,
+                    $target, [ref]$copy, 0, $false, 2)
+                [void][Handles]::CloseHandle($target)
+                if (!$ok) { $p.Kill(); $p.WaitForExit(); exit 3 }
+                [Console]::WriteLine($copy.ToInt64())
+                exit 17
+                """#
+            let output = try Process.Spawn.run(
+                .init(
+                    executable: #"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"#,
+                    arguments: ["-NoProfile", "-NonInteractive", "-Command", script],
+                    stdout: .pipe, stderr: .pipe, timeout: .seconds(20)
+                )
+            )
+            #expect(output.status == .exited(code: 17))
+            let handles = Swift.String(decoding: output.stdout ?? [], as: UTF8.self)
+                .split(whereSeparator: { $0.isWhitespace })
+            guard let value = handles.first, let raw = UInt(value),
+                let descendant = unsafe UnsafeMutableRawPointer(bitPattern: raw)
+            else {
+                Issue.record("The fixture did not return its owned descendant handle")
+                return
+            }
+            defer {
+                _ = unsafe TerminateProcess(descendant, 1)
+                _ = unsafe WaitForSingleObject(descendant, INFINITE)
+                _ = unsafe CloseHandle(descendant)
+            }
+            let active = unsafe WaitForSingleObject(descendant, 0)
+            #expect(active == UInt32(WAIT_TIMEOUT))
         }
 
         @Test(.timeLimit(.minutes(1)))
