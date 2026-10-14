@@ -38,10 +38,13 @@
             _ configuration: Configuration
         ) throws(Process.Error) -> Process.Output {
             let actions = try _makeActions()
-            let result = try _spawnWithActions(configuration, actions: actions)
+            let deadline = try _makeDeadline(configuration.timeout)
+            defer { deadline?.cancel() }
+            let result = try _spawnWithActions(configuration, actions: actions, deadline: deadline)
             let handle = Process.Handle(processInfo: consume result)
             let status = try handle.wait()
-            return Process.Output(status: status)
+            let bounded = try deadline?.finish(status) ?? status
+            return Process.Output(status: bounded)
         }
 
         @usableFromInline
@@ -53,12 +56,15 @@
 
             try _wireChildHandle(stdoutPipe.write, into: &actions, slot: .stdout)
 
-            let result = try _spawnWithActions(configuration, actions: actions)
+            let deadline = try _makeDeadline(configuration.timeout)
+            defer { deadline?.cancel() }
+            let result = try _spawnWithActions(configuration, actions: actions, deadline: deadline)
             let stdoutRead = try _closeWriteEnd(stdoutPipe)
             let captured = try _drainBytes(stdoutRead)
             let handle = Process.Handle(processInfo: consume result)
             let status = try handle.wait()
-            return Process.Output(status: status, stdout: captured, stderr: nil)
+            let bounded = try deadline?.finish(status) ?? status
+            return Process.Output(status: bounded, stdout: captured, stderr: nil)
         }
 
         @usableFromInline
@@ -70,12 +76,15 @@
 
             try _wireChildHandle(stderrPipe.write, into: &actions, slot: .stderr)
 
-            let result = try _spawnWithActions(configuration, actions: actions)
+            let deadline = try _makeDeadline(configuration.timeout)
+            defer { deadline?.cancel() }
+            let result = try _spawnWithActions(configuration, actions: actions, deadline: deadline)
             let stderrRead = try _closeWriteEnd(stderrPipe)
             let captured = try _drainBytes(stderrRead)
             let handle = Process.Handle(processInfo: consume result)
             let status = try handle.wait()
-            return Process.Output(status: status, stdout: nil, stderr: captured)
+            let bounded = try deadline?.finish(status) ?? status
+            return Process.Output(status: bounded, stdout: nil, stderr: captured)
         }
 
         @usableFromInline
@@ -89,7 +98,9 @@
             try _wireChildHandle(stdoutPipe.write, into: &actions, slot: .stdout)
             try _wireChildHandle(stderrPipe.write, into: &actions, slot: .stderr)
 
-            let result = try _spawnWithActions(configuration, actions: actions)
+            let deadline = try _makeDeadline(configuration.timeout)
+            defer { deadline?.cancel() }
+            let result = try _spawnWithActions(configuration, actions: actions, deadline: deadline)
             let stdoutRead = try _closeWriteEnd(stdoutPipe)
             let stderrRead = try _closeWriteEnd(stderrPipe)
 
@@ -117,8 +128,9 @@
 
             let handle = Process.Handle(processInfo: consume result)
             let status = try handle.wait()
+            let bounded = try deadline?.finish(status) ?? status
             return Process.Output(
-                status: status,
+                status: bounded,
                 stdout: capturedStdout,
                 stderr: capturedStderr
             )
@@ -132,6 +144,11 @@
     }
 
     extension Process.Spawn {
+        private static func _makeDeadline(_ timeout: Duration?) throws(Process.Error) -> Deadline? {
+            guard let timeout else { return nil }
+            return try Deadline(timeout: timeout)
+        }
+
         @usableFromInline
         internal static func _makeActions() throws(Process.Error)
             -> Windows.`32`.Kernel.Process.Spawn.Actions
@@ -192,7 +209,8 @@
         @usableFromInline
         internal static func _spawnWithActions(
             _ configuration: Configuration,
-            actions: borrowing Windows.`32`.Kernel.Process.Spawn.Actions
+            actions: borrowing Windows.`32`.Kernel.Process.Spawn.Actions,
+            deadline: Deadline? = nil
         ) throws(Process.Error) -> Windows.`32`.Kernel.Process.Spawn.Result {
 
             var commandLineString = _quoteWindowsCommandLineArgument(configuration.executable)
@@ -235,15 +253,30 @@
                                 (
                                     envPtr: UnsafePointer<WCHAR>?
                                 ) throws(Process.Error.Kernel) in
-                                spawnedResult = try unsafe Windows.`32`.Kernel.Process.Spawn.spawn(
-                                    executable: exePtr.baseAddress,
-                                    commandLine: cmdPtr.baseAddress!,
-                                    environment: envPtr.map {
-                                        unsafe UnsafeMutableRawPointer(mutating: $0)
-                                    },
-                                    workingDirectory: cwdPtr,
-                                    actions: actions
-                                )
+                                if let deadline {
+                                    spawnedResult = try unsafe Windows.`32`.Kernel.Process.Spawn
+                                        .spawn(
+                                            executable: exePtr.baseAddress,
+                                            commandLine: cmdPtr.baseAddress!,
+                                            environment: envPtr.map {
+                                                unsafe UnsafeMutableRawPointer(mutating: $0)
+                                            },
+                                            workingDirectory: cwdPtr,
+                                            actions: actions,
+                                            job: deadline.job
+                                        )
+                                } else {
+                                    spawnedResult = try unsafe Windows.`32`.Kernel.Process.Spawn
+                                        .spawn(
+                                            executable: exePtr.baseAddress,
+                                            commandLine: cmdPtr.baseAddress!,
+                                            environment: envPtr.map {
+                                                unsafe UnsafeMutableRawPointer(mutating: $0)
+                                            },
+                                            workingDirectory: cwdPtr,
+                                            actions: actions
+                                        )
+                                }
                             }
                         }
                     }
@@ -263,6 +296,18 @@
                 preconditionFailure(
                     "Windows.`32`.Kernel.Process.Spawn.spawn produced neither a result nor a thrown error"
                 )
+            }
+            do throws(Process.Error) {
+                try deadline?.start()
+            } catch {
+                deadline?.cancel()
+                let handle = Process.Handle(processInfo: consume result)
+                do throws(Process.Error) {
+                    _ = try handle.wait()
+                } catch {
+                    throw error
+                }
+                throw error
             }
             return result
         }
