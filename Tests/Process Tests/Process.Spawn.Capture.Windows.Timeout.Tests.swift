@@ -154,43 +154,66 @@
             #expect(output.status == .signaled(signal: 9))
         }
 
+        private static func descendant(
+            parent: UInt32,
+            inheritingCapturedPipes: Bool
+        ) -> String {
+            #"""
+            Add-Type @'
+            using System;
+            using System.Runtime.InteropServices;
+            public static class Handles {
+                [DllImport("kernel32.dll", SetLastError=true)]
+                public static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+                [DllImport("kernel32.dll", SetLastError=true)]
+                public static extern bool DuplicateHandle(IntPtr source, IntPtr handle,
+                    IntPtr target, out IntPtr copy, uint access, bool inherit, uint options);
+                [DllImport("kernel32.dll")]
+                public static extern IntPtr GetCurrentProcess();
+                [DllImport("kernel32.dll")]
+                public static extern bool CloseHandle(IntPtr handle);
+                [DllImport("kernel32.dll")]
+                public static extern IntPtr GetStdHandle(int id);
+                [DllImport("kernel32.dll", SetLastError=true)]
+                public static extern bool SetHandleInformation(IntPtr handle, uint mask,
+                    uint flags);
+                [DllImport("kernel32.dll", SetLastError=true)]
+                public static extern bool GetHandleInformation(IntPtr handle, out uint flags);
+            }
+            '@
+            foreach ($id in @(-11, -12)) {
+                $handle = [Handles]::GetStdHandle($id)
+                if ($handle -eq [IntPtr]::Zero -or $handle.ToInt64() -eq -1) { exit 4 }
+                if (![Handles]::SetHandleInformation($handle, 1, \#(inheritingCapturedPipes ? 1 : 0))) { exit 5 }
+                [uint32]$flags = 0
+                if (![Handles]::GetHandleInformation($handle, [ref]$flags)) { exit 6 }
+                if (($flags -band 1) -ne \#(inheritingCapturedPipes ? 1 : 0)) { exit 7 }
+            }
+            $target = [Handles]::OpenProcess(0x40, $false, \#(parent))
+            if ($target -eq [IntPtr]::Zero) { exit 2 }
+            $s = New-Object System.Diagnostics.ProcessStartInfo
+            $s.FileName = 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+            $s.Arguments = '-NoLogo -NoProfile -NonInteractive -Command Start-Sleep -Seconds 20'
+            $s.UseShellExecute = $false
+            $s.CreateNoWindow = $true
+            $s.RedirectStandardInput = $true
+            $s.RedirectStandardOutput = $true
+            $s.RedirectStandardError = $true
+            $p = [System.Diagnostics.Process]::Start($s)
+            $copy = [IntPtr]::Zero
+            $ok = [Handles]::DuplicateHandle([Handles]::GetCurrentProcess(), $p.Handle,
+                $target, [ref]$copy, 0, $false, 2)
+            [void][Handles]::CloseHandle($target)
+            if (!$ok) { $p.Kill(); $p.WaitForExit(); exit 3 }
+            [Console]::WriteLine($copy.ToInt64())
+            exit 17
+            """#
+        }
+
         @Test(.timeLimit(.minutes(1)))
         func `normal timed return preserves a continuing descendant`() throws(Process.Error) {
             let parent = unsafe GetCurrentProcessId()
-            let script = #"""
-                Add-Type @'
-                using System;
-                using System.Runtime.InteropServices;
-                public static class Handles {
-                    [DllImport("kernel32.dll", SetLastError=true)]
-                    public static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
-                    [DllImport("kernel32.dll", SetLastError=true)]
-                    public static extern bool DuplicateHandle(IntPtr source, IntPtr handle,
-                        IntPtr target, out IntPtr copy, uint access, bool inherit, uint options);
-                    [DllImport("kernel32.dll")]
-                    public static extern IntPtr GetCurrentProcess();
-                    [DllImport("kernel32.dll")]
-                    public static extern bool CloseHandle(IntPtr handle);
-                }
-                '@
-                $target = [Handles]::OpenProcess(0x40, $false, \#(parent))
-                if ($target -eq [IntPtr]::Zero) { exit 2 }
-                $s = New-Object System.Diagnostics.ProcessStartInfo
-                $s.FileName = 'C:\Windows\System32\ping.exe'
-                $s.Arguments = '-n 21 127.0.0.1'
-                $s.UseShellExecute = $false
-                $s.CreateNoWindow = $true
-                $s.RedirectStandardOutput = $true
-                $s.RedirectStandardError = $true
-                $p = [System.Diagnostics.Process]::Start($s)
-                $copy = [IntPtr]::Zero
-                $ok = [Handles]::DuplicateHandle([Handles]::GetCurrentProcess(), $p.Handle,
-                    $target, [ref]$copy, 0, $false, 2)
-                [void][Handles]::CloseHandle($target)
-                if (!$ok) { $p.Kill(); $p.WaitForExit(); exit 3 }
-                [Console]::WriteLine($copy.ToInt64())
-                exit 17
-                """#
+            let script = Self.descendant(parent: parent, inheritingCapturedPipes: false)
             let output = try Process.Spawn.run(
                 .init(
                     executable: #"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"#,
@@ -214,6 +237,35 @@
             }
             let active = unsafe WaitForSingleObject(descendant, 0)
             #expect(active == UInt32(WAIT_TIMEOUT))
+        }
+
+        @Test(.timeLimit(.minutes(1)))
+        func `unused inherited capture handles retain the deadline`() throws(Process.Error) {
+            let parent = unsafe GetCurrentProcessId()
+            let script = Self.descendant(parent: parent, inheritingCapturedPipes: true)
+            let output = try Process.Spawn.run(
+                .init(
+                    executable: #"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"#,
+                    arguments: ["-NoProfile", "-NonInteractive", "-Command", script],
+                    stdout: .pipe, stderr: .pipe, timeout: .seconds(20)
+                )
+            )
+            #expect(output.status == .signaled(signal: 9))
+            let handles = String(decoding: output.stdout ?? [], as: UTF8.self)
+                .split(whereSeparator: { $0.isWhitespace })
+            guard let value = handles.first, let raw = UInt(value),
+                let descendant = unsafe UnsafeMutableRawPointer(bitPattern: raw)
+            else {
+                Issue.record("The fixture did not return its owned descendant handle")
+                return
+            }
+            defer {
+                _ = unsafe TerminateProcess(descendant, 1)
+                _ = unsafe WaitForSingleObject(descendant, INFINITE)
+                _ = unsafe CloseHandle(descendant)
+            }
+            let active = unsafe WaitForSingleObject(descendant, 0)
+            #expect(active == UInt32(WAIT_OBJECT_0))
         }
 
         @Test(.timeLimit(.minutes(1)))
