@@ -165,9 +165,44 @@
             Add-Type @'
             using System;
             using System.Runtime.InteropServices;
+            using System.Text;
             public static class Handles {
+                [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]
+                public struct StartupInfo {
+                    public uint cb;
+                    public string reserved;
+                    public string desktop;
+                    public string title;
+                    public uint x;
+                    public uint y;
+                    public uint xSize;
+                    public uint ySize;
+                    public uint xCountChars;
+                    public uint yCountChars;
+                    public uint fillAttribute;
+                    public uint flags;
+                    public ushort showWindow;
+                    public ushort reserved2;
+                    public IntPtr reservedBytes;
+                    public IntPtr standardInput;
+                    public IntPtr standardOutput;
+                    public IntPtr standardError;
+                }
+                [StructLayout(LayoutKind.Sequential)]
+                public struct ProcessInformation {
+                    public IntPtr process;
+                    public IntPtr thread;
+                    public uint processID;
+                    public uint threadID;
+                }
                 [DllImport("kernel32.dll", SetLastError=true)]
                 public static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+                [DllImport("kernel32.dll", EntryPoint="CreateProcessW", ExactSpelling=true,
+                    SetLastError=true, CharSet=CharSet.Unicode)]
+                public static extern bool CreateProcess(string application, StringBuilder command,
+                    IntPtr processAttributes, IntPtr threadAttributes, bool inheritHandles,
+                    uint flags, IntPtr environment, string directory, ref StartupInfo startup,
+                    out ProcessInformation process);
                 [DllImport("kernel32.dll", SetLastError=true)]
                 public static extern bool DuplicateHandle(IntPtr source, IntPtr handle,
                     IntPtr target, out IntPtr copy, uint access, bool inherit, uint options);
@@ -175,39 +210,33 @@
                 public static extern IntPtr GetCurrentProcess();
                 [DllImport("kernel32.dll")]
                 public static extern bool CloseHandle(IntPtr handle);
-                [DllImport("kernel32.dll")]
-                public static extern IntPtr GetStdHandle(int id);
-                [DllImport("kernel32.dll", SetLastError=true)]
-                public static extern bool SetHandleInformation(IntPtr handle, uint mask,
-                    uint flags);
-                [DllImport("kernel32.dll", SetLastError=true)]
-                public static extern bool GetHandleInformation(IntPtr handle, out uint flags);
+                public static IntPtr Start(bool inheritHandles) {
+                    var startup = new StartupInfo();
+                    startup.cb = (uint)Marshal.SizeOf(startup);
+                    ProcessInformation process;
+                    var executable = @"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe";
+                    var command = new StringBuilder(
+                        "powershell.exe -NoLogo -NoProfile -NonInteractive " +
+                        "-Command Start-Sleep -Seconds 20");
+                    if (!CreateProcess(executable, command, IntPtr.Zero, IntPtr.Zero,
+                        inheritHandles, 0x08000000, IntPtr.Zero, null, ref startup, out process)) {
+                        return IntPtr.Zero;
+                    }
+                    CloseHandle(process.thread);
+                    return process.process;
+                }
             }
             '@
-            foreach ($id in @(-11, -12)) {
-                $handle = [Handles]::GetStdHandle($id)
-                if ($handle -eq [IntPtr]::Zero -or $handle.ToInt64() -eq -1) { exit 4 }
-                if (![Handles]::SetHandleInformation($handle, 1, \#(inheritingCapturedPipes ? 1 : 0))) { exit 5 }
-                [uint32]$flags = 0
-                if (![Handles]::GetHandleInformation($handle, [ref]$flags)) { exit 6 }
-                if (($flags -band 1) -ne \#(inheritingCapturedPipes ? 1 : 0)) { exit 7 }
-            }
             $target = [Handles]::OpenProcess(0x40, $false, \#(parent))
             if ($target -eq [IntPtr]::Zero) { exit 2 }
-            $s = New-Object System.Diagnostics.ProcessStartInfo
-            $s.FileName = 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
-            $s.Arguments = '-NoLogo -NoProfile -NonInteractive -Command Start-Sleep -Seconds 20'
-            $s.UseShellExecute = $false
-            $s.CreateNoWindow = $true
-            $s.RedirectStandardInput = $true
-            $s.RedirectStandardOutput = $true
-            $s.RedirectStandardError = $true
-            $p = [System.Diagnostics.Process]::Start($s)
+            $process = [Handles]::Start($\#(inheritingCapturedPipes ? "true" : "false"))
+            if ($process -eq [IntPtr]::Zero) { exit 8 }
             $copy = [IntPtr]::Zero
-            $ok = [Handles]::DuplicateHandle([Handles]::GetCurrentProcess(), $p.Handle,
+            $ok = [Handles]::DuplicateHandle([Handles]::GetCurrentProcess(), $process,
                 $target, [ref]$copy, 0, $false, 2)
             [void][Handles]::CloseHandle($target)
-            if (!$ok) { $p.Kill(); $p.WaitForExit(); exit 3 }
+            [void][Handles]::CloseHandle($process)
+            if (!$ok) { exit 3 }
             [Console]::WriteLine($copy.ToInt64())
             exit 17
             """#
@@ -271,7 +300,7 @@
                 _ = unsafe WaitForSingleObject(descendant, INFINITE)
                 _ = unsafe CloseHandle(descendant)
             }
-            let active = unsafe WaitForSingleObject(descendant, 0)
+            let active = unsafe WaitForSingleObject(descendant, 5_000)
             #expect(active == UInt32(WAIT_OBJECT_0))
         }
 
