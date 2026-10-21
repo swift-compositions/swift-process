@@ -10,7 +10,10 @@
                 let actions = try _makeActions()
                 let deadline = try Deadline(timeout: timeout, termination: hooks.termination)
                 let result = try _spawnWithActions(
-                    configuration, actions: actions, deadline: deadline)
+                    configuration,
+                    actions: actions,
+                    deadline: deadline
+                )
                 var capture = Capture(result: consume result, deadline: deadline, hooks: hooks)
                 defer { capture.cancel() }
                 return Process.Output(status: try capture.finish())
@@ -21,7 +24,10 @@
                 try _wireChildHandle(pipe.write, into: &actions, slot: .stdout)
                 let deadline = try Deadline(timeout: timeout, termination: hooks.termination)
                 let result = try _spawnWithActions(
-                    configuration, actions: actions, deadline: deadline)
+                    configuration,
+                    actions: actions,
+                    deadline: deadline
+                )
                 var capture = Capture(result: consume result, deadline: deadline, hooks: hooks)
                 defer { capture.cancel() }
                 let output = try capture.read(try _closeWriteEnd(pipe), stream: .stdout)
@@ -33,7 +39,10 @@
                 try _wireChildHandle(pipe.write, into: &actions, slot: .stderr)
                 let deadline = try Deadline(timeout: timeout, termination: hooks.termination)
                 let result = try _spawnWithActions(
-                    configuration, actions: actions, deadline: deadline)
+                    configuration,
+                    actions: actions,
+                    deadline: deadline
+                )
                 var capture = Capture(result: consume result, deadline: deadline, hooks: hooks)
                 defer { capture.cancel() }
                 let output = try capture.read(try _closeWriteEnd(pipe), stream: .stderr)
@@ -47,7 +56,10 @@
                 try _wireChildHandle(errorPipe.write, into: &actions, slot: .stderr)
                 let deadline = try Deadline(timeout: timeout, termination: hooks.termination)
                 let result = try _spawnWithActions(
-                    configuration, actions: actions, deadline: deadline)
+                    configuration,
+                    actions: actions,
+                    deadline: deadline
+                )
                 var capture = Capture(result: consume result, deadline: deadline, hooks: hooks)
                 defer { capture.cancel() }
                 let output = try _closeWriteEnd(outputPipe)
@@ -56,7 +68,9 @@
                 let captured = try capture.read(output, stream: .stdout)
                 let errors = try capture.collect()
                 return Process.Output(
-                    status: try capture.finish(), stdout: captured, stderr: errors
+                    status: try capture.finish(),
+                    stdout: captured,
+                    stderr: errors
                 )
             }
         }

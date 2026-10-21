@@ -240,14 +240,19 @@
                                 (
                                     envPtr: UnsafePointer<WCHAR>?
                                 ) throws(Process.Error.Kernel) in
+                                guard let commandLine = unsafe cmdPtr.baseAddress else {
+                                    preconditionFailure("command line buffer is non-empty (NUL-terminated)")
+                                }
                                 if let deadline {
                                     try deadline.job {
-                                        (job: borrowing Windows.`32`.Kernel.Process.Job)
+                                        (
+                                            job: borrowing Windows.`32`.Kernel.Process.Job
+                                        )
                                             throws(Process.Error.Kernel) in
                                         spawnedResult = try unsafe Windows.`32`.Kernel.Process.Spawn
                                             .spawn(
                                                 executable: exePtr.baseAddress,
-                                                commandLine: cmdPtr.baseAddress!,
+                                                commandLine: commandLine,
                                                 environment: envPtr.map {
                                                     unsafe UnsafeMutableRawPointer(mutating: $0)
                                                 },
@@ -260,7 +265,7 @@
                                     spawnedResult = try unsafe Windows.`32`.Kernel.Process.Spawn
                                         .spawn(
                                             executable: exePtr.baseAddress,
-                                            commandLine: cmdPtr.baseAddress!,
+                                            commandLine: commandLine,
                                             environment: envPtr.map {
                                                 unsafe UnsafeMutableRawPointer(mutating: $0)
                                             },
@@ -413,8 +418,7 @@
 extension Process.Spawn {
 
     @usableFromInline
-    internal static func _quoteWindowsCommandLineArgument(_ argument: Swift.String) -> Swift.String
-    {
+    internal static func _quoteWindowsCommandLineArgument(_ argument: Swift.String) -> Swift.String {
         let needsQuoting =
             argument.isEmpty
             || argument.contains(where: {

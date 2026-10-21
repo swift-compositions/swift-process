@@ -257,8 +257,11 @@
                         vectorPtr: UnsafePointer<UnsafePointer<Path.Char>?>,
                         envpPtr: UnsafePointer<UnsafePointer<Path.Char>?>
                     ) throws(ISO_9945.Kernel.Process.Error) -> ISO_9945.Kernel.Process.ID in
-                    try unsafe ISO_9945.Kernel.Process.Spawn.spawn(
-                        path: vectorPtr[0]!,
+                    guard let path = unsafe vectorPtr[0] else {
+                        preconditionFailure("spawn vector always contains the executable path")
+                    }
+                    return try unsafe ISO_9945.Kernel.Process.Spawn.spawn(
+                        path: path,
                         argv: vectorPtr + 1,
                         envp: envpPtr,
                         actions: actions,

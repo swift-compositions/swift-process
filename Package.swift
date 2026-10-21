@@ -65,16 +65,31 @@ let package = Package(
             name: "Process Tests",
             dependencies: [
                 "Process",
-                .product(name: "Windows Kernel Process", package: "swift-windows",
-                    condition: .when(platforms: [.windows])),
-                .product(name: "Windows Kernel Thread", package: "swift-windows",
-                    condition: .when(platforms: [.windows])),
-                .product(name: "ISO 9945 Core", package: "swift-iso-9945",
-                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .visionOS, .linux])),
-                .product(name: "ISO 9945 Kernel Process", package: "swift-iso-9945",
-                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .visionOS, .linux])),
-                .product(name: "POSIX Kernel", package: "swift-posix",
-                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .visionOS, .linux])),
+                .product(
+                    name: "Windows Kernel Process",
+                    package: "swift-windows",
+                    condition: .when(platforms: [.windows])
+                ),
+                .product(
+                    name: "Windows Kernel Thread",
+                    package: "swift-windows",
+                    condition: .when(platforms: [.windows])
+                ),
+                .product(
+                    name: "ISO 9945 Core",
+                    package: "swift-iso-9945",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .visionOS, .linux])
+                ),
+                .product(
+                    name: "ISO 9945 Kernel Process",
+                    package: "swift-iso-9945",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .visionOS, .linux])
+                ),
+                .product(
+                    name: "POSIX Kernel",
+                    package: "swift-posix",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .visionOS, .linux])
+                ),
             ]
         ),
     ],

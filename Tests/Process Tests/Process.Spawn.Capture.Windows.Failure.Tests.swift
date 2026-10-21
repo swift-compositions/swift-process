@@ -24,8 +24,11 @@
                     .init(
                         executable: #"C:\Windows\System32\cmd.exe"#,
                         arguments: ["/D", "/C", "ping -n 7 127.0.0.1 >nul"],
-                        stdout: .pipe, stderr: .pipe
-                    ), timeout: .seconds(20), hooks: hooks
+                        stdout: .pipe,
+                        stderr: .pipe
+                    ),
+                    timeout: .seconds(20),
+                    hooks: hooks
                 )
                 Issue.record("Expected the controlled reader creation failure")
             } catch {
@@ -60,8 +63,11 @@
                     .init(
                         executable: #"C:\Windows\System32\cmd.exe"#,
                         arguments: ["/D", "/C", "ping -n 7 127.0.0.1 >nul"],
-                        stdout: .pipe, stderr: .pipe
-                    ), timeout: .seconds(20), hooks: hooks
+                        stdout: .pipe,
+                        stderr: .pipe
+                    ),
+                    timeout: .seconds(20),
+                    hooks: hooks
                 )
                 Issue.record("Expected the controlled stdout failure")
             } catch {
@@ -86,8 +92,11 @@
                     .init(
                         executable: #"C:\Windows\System32\cmd.exe"#,
                         arguments: ["/D", "/C", "ping -n 7 127.0.0.1 >nul"],
-                        stdout: stream.output, stderr: stream.error
-                    ), timeout: .seconds(20), hooks: hooks
+                        stdout: stream.output,
+                        stderr: stream.error
+                    ),
+                    timeout: .seconds(20),
+                    hooks: hooks
                 )
                 Issue.record("Expected the controlled pipe failure")
             } catch {
@@ -114,8 +123,11 @@
                     .init(
                         executable: #"C:\Windows\System32\cmd.exe"#,
                         arguments: ["/D", "/C", "ping -n 7 127.0.0.1 >nul"],
-                        stdout: .pipe, stderr: .pipe
-                    ), timeout: .milliseconds(50), hooks: hooks
+                        stdout: .pipe,
+                        stderr: .pipe
+                    ),
+                    timeout: .milliseconds(50),
+                    hooks: hooks
                 )
                 Issue.record("Expected the controlled job termination failure")
             } catch {

@@ -14,8 +14,7 @@
         }
 
         @usableFromInline
-        internal static func _environmentNamesMatch(_ key: Substring, _ name: Swift.String) -> Bool
-        {
+        internal static func _environmentNamesMatch(_ key: Substring, _ name: Swift.String) -> Bool {
             key == name
         }
 

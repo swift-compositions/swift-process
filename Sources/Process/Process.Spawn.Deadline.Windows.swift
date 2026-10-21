@@ -82,7 +82,9 @@
             case .complete:
                 do throws(Process.Error.Kernel) {
                     try job {
-                        (job: borrowing Windows.`32`.Kernel.Process.Job)
+                        (
+                            job: borrowing Windows.`32`.Kernel.Process.Job
+                        )
                             throws(Process.Error.Kernel) in
                         try job.limit([])
                     }
@@ -152,7 +154,9 @@
                 Result
         ) throws(Process.Error.Kernel) -> Result {
             try containment.withLock {
-                (job: inout Windows.`32`.Kernel.Process.Job?)
+                (
+                    job: inout Windows.`32`.Kernel.Process.Job?
+                )
                     throws(Process.Error.Kernel) -> Result in
                 switch job {
                 case .some(let job): return try body(job)
@@ -163,7 +167,9 @@
 
         private func terminate() {
             let failure = containment.withLock {
-                (job: inout Windows.`32`.Kernel.Process.Job?)
+                (
+                    job: inout Windows.`32`.Kernel.Process.Job?
+                )
                     -> Process.Error? in
                 let failure: Process.Error?
                 switch job {

@@ -129,10 +129,16 @@
                 let expected = try IsolationFixture.identity(of: descriptor)
 
                 let controlExit = try IsolationFixture.spawn(
-                    IsolationFixture.probe(descriptor), output: control, stdio: .redirected, isolated: false
+                    IsolationFixture.probe(descriptor),
+                    output: control,
+                    stdio: .redirected,
+                    isolated: false
                 )
                 let isolatedExit = try IsolationFixture.spawn(
-                    IsolationFixture.probe(descriptor), output: isolated, stdio: .redirected, isolated: true
+                    IsolationFixture.probe(descriptor),
+                    output: isolated,
+                    stdio: .redirected,
+                    isolated: true
                 )
                 let retained = try IsolationFixture.identity(of: descriptor)
                 let controlReport = try IsolationFixture.read(control)
@@ -151,7 +157,10 @@
                 defer { unlink(output) }
 
                 let exit = try IsolationFixture.spawn(
-                    IsolationFixture.probe(0), output: output, stdio: .closedStdin, isolated: true
+                    IsolationFixture.probe(0),
+                    output: output,
+                    stdio: .closedStdin,
+                    isolated: true
                 )
                 let reported = try IsolationFixture.read(output)
 

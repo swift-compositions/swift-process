@@ -12,11 +12,11 @@
                     -> Windows.`32`.Kernel.Thread.Handle = {
                         try Windows.`32`.Kernel.Thread.create($0)
                     }
-            internal var read:
-                @Sendable (UInt, Process.Spawn._StdioSlot) -> Result<[UInt8], Process.Error> = {
-                    raw, _ in
-                    Process.Spawn._drainRawHandle(raw)
-                }
+            internal var read: @Sendable (UInt, Process.Spawn._StdioSlot) -> Result<[UInt8], Process.Error> = {
+                raw,
+                _ in
+                Process.Spawn._drainRawHandle(raw)
+            }
             internal var waited: @Sendable (Result<Process.Status, Process.Error>) -> Void = { _ in
             }
         }

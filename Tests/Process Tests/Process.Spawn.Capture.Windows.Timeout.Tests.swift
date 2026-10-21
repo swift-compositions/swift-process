@@ -87,9 +87,11 @@
             )
             #expect(output.status == .signaled(signal: 9))
             #expect(
-                Swift.String(decoding: output.stdout ?? [], as: UTF8.self).contains("before-out"))
+                Swift.String(decoding: output.stdout ?? [], as: UTF8.self).contains("before-out")
+            )
             #expect(
-                Swift.String(decoding: output.stderr ?? [], as: UTF8.self).contains("before-err"))
+                Swift.String(decoding: output.stderr ?? [], as: UTF8.self).contains("before-err")
+            )
         }
 
         @Test(.timeLimit(.minutes(1)))
@@ -113,7 +115,8 @@
             #expect(output.status == .signaled(signal: 9))
             #expect(ContinuousClock().now - start < .seconds(3))
             #expect(
-                Swift.String(decoding: output.stdout ?? [], as: UTF8.self).contains("root-exited"))
+                Swift.String(decoding: output.stdout ?? [], as: UTF8.self).contains("root-exited")
+            )
         }
 
         @Test(.timeLimit(.minutes(1)))
@@ -218,7 +221,9 @@
                 .init(
                     executable: #"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"#,
                     arguments: ["-NoProfile", "-NonInteractive", "-Command", script],
-                    stdout: .pipe, stderr: .pipe, timeout: .seconds(20)
+                    stdout: .pipe,
+                    stderr: .pipe,
+                    timeout: .seconds(20)
                 )
             )
             #expect(output.status == .exited(code: 17))
@@ -247,7 +252,9 @@
                 .init(
                     executable: #"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"#,
                     arguments: ["-NoProfile", "-NonInteractive", "-Command", script],
-                    stdout: .pipe, stderr: .pipe, timeout: .seconds(20)
+                    stdout: .pipe,
+                    stderr: .pipe,
+                    timeout: .seconds(20)
                 )
             )
             #expect(output.status == .signaled(signal: 9))
