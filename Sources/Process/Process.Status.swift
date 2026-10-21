@@ -1,5 +1,5 @@
 #if !os(Windows)
-    internal import POSIX_Kernel
+    internal import Kernel
 #endif
 
 extension Process {

@@ -1,5 +1,5 @@
 #if !os(Windows)
-    internal import POSIX_Kernel
+    internal import Kernel
 #else
     internal import Windows_Kernel_Process
 #endif

@@ -1,7 +1,7 @@
 #if !os(Windows)
 
     internal import Path
-    internal import POSIX_Kernel
+    internal import Kernel
     internal import POSIX_Kernel_File
     @_spi(Syscall) internal import ISO_9945_Kernel_Poll
 

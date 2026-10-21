@@ -1,5 +1,5 @@
 #if !os(Windows)
-    public import POSIX_Kernel
+    public import Kernel
 #endif
 
 #if os(Windows)

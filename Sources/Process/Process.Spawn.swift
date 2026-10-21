@@ -2,7 +2,7 @@ internal import Strings
 
 #if !os(Windows)
     internal import Path
-    internal import POSIX_Kernel
+    internal import Kernel
 #endif
 
 extension Process {
