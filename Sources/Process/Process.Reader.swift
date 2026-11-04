@@ -1,12 +1,11 @@
 #if !os(Windows)
     public import Kernel
-    internal import POSIX_Kernel_File
 
     extension Process {
 
         public final class Reader: Sendable {
 
-            public let processID: ISO_9945.Kernel.Process.ID
+            public let id: ISO_9945.Kernel.Process.ID
 
             private let descriptor: ISO_9945.Kernel.Descriptor
 
@@ -14,7 +13,7 @@
                 processID: ISO_9945.Kernel.Process.ID,
                 descriptor: consuming ISO_9945.Kernel.Descriptor
             ) {
-                self.processID = processID
+                self.id = processID
                 self.descriptor = descriptor
             }
         }
@@ -38,14 +37,14 @@
 
         public func terminate() throws(Process.Error) {
             do throws(ISO_9945.Kernel.Process.Error) {
-                try POSIX.Kernel.Process.Kill.kill(processID, .kill)
+                try POSIX.Kernel.Process.Kill.kill(id, .kill)
             } catch {
                 throw .spawn(error)
             }
         }
 
         public func wait() throws(Process.Error) -> Process.Status {
-            try Process.Handle(processID: processID).wait()
+            try Process.Handle(processID: id).wait()
         }
     }
 

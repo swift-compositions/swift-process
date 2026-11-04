@@ -10,7 +10,7 @@
     }
 
     extension Process.Reader.Test.Unit {
-        static func reader(_ script: Swift.String) throws -> Process.Reader {
+        static func reader(_ script: Swift.String) throws(Process.Error) -> Process.Reader {
             try Process.Spawn.reading(
                 Process.Spawn.Configuration(executable: "/bin/sh", arguments: ["-c", script], stdout: .pipe)
             )
