@@ -19,7 +19,7 @@
                 timeout: Duration,
                 termination:
                     @escaping @Sendable (borrowing Windows.`32`.Kernel.Process.Job)
-                    throws(Process.Error.Kernel) -> Void = { (job: borrowing Windows.`32`.Kernel.Process.Job) throws(Process.Error.Kernel) -> Void in try job.terminate(code: 1) }
+                    throws(Process.Error.Kernel) -> Void = { (job: borrowing Windows.`32`.Kernel.Process.Job) throws(Process.Error.Kernel) in try job.terminate(code: 1) }
             ) throws(Process.Error) {
                 do throws(Process.Error.Kernel) {
                     let job = try Windows.`32`.Kernel.Process.Job()

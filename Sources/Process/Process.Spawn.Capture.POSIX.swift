@@ -5,14 +5,6 @@
     internal import POSIX_Kernel_File
     @_spi(Syscall) internal import ISO_9945_Kernel_Poll
 
-    #if canImport(Darwin)
-        internal import Darwin
-    #elseif canImport(Glibc)
-        internal import Glibc
-    #elseif canImport(Musl)
-        internal import Musl
-    #endif
-
     extension Process.Spawn {
         internal static func _runWithCapture(
             _ configuration: Configuration
@@ -404,106 +396,74 @@
                 return Watchdog()
             }
 
-            var fds: (Int32, Int32) = (-1, -1)
-            let pipeResult: Int32 = withUnsafeMutablePointer(to: &fds) { tuple -> Int32 in
-                unsafe tuple.withMemoryRebound(to: Int32.self, capacity: 2) { fdPtr -> Int32 in
-                    unsafe pipe(fdPtr)
-                }
-            }
-            guard pipeResult == 0 else {
-                throw .capture(.posix(errno))
-            }
-
-            let readFd = fds.0
-            let writeFd = fds.1
+            let pipe = try _makePipe()
+            let shutdown = ISO_9945.Kernel.Poll.Entry(pipe.read, requested: [.input])
             let timeoutMs = _durationToPollMilliseconds(timeout)
 
             let thread: ISO_9945.Kernel.Thread.Handle
             do throws(ISO_9945.Kernel.Thread.Error) {
                 thread = try POSIX.Kernel.Thread.create {
-                    _watchdogBody(
-                        shutdownReadFd: readFd,
-                        pid: pid,
-                        timeoutMilliseconds: timeoutMs
-                    )
+                    _watchdogBody(shutdown: shutdown, pid: pid, timeoutMilliseconds: timeoutMs)
                 }
             } catch {
-
-                _closeRawFd(readFd)
-                _closeRawFd(writeFd)
                 throw .capture(_threadErrorCode(error))
             }
 
             var watchdog = Watchdog()
             watchdog.thread = consume thread
-            watchdog.shutdownWriteFd = writeFd
-            watchdog.shutdownReadFd = readFd
+            watchdog.shutdown = consume pipe
             return watchdog
         }
         internal static func _disarmWatchdog(_ watchdog: consuming Watchdog) {
-
-            let writeFd = watchdog.shutdownWriteFd
-            let readFd = watchdog.shutdownReadFd
             let threadOpt: ISO_9945.Kernel.Thread.Handle? = consume watchdog.thread
+            let shutdownOpt: ISO_9945.Kernel.Pipe.Descriptors? = consume watchdog.shutdown
 
-            guard let thread = consume threadOpt else {
+            guard let thread = consume threadOpt, let shutdown = consume shutdownOpt else {
                 return
             }
 
-            if writeFd >= 0 {
-
-                _writeWakeByte(writeFd)
-
-                _closeRawFd(writeFd)
-            }
+            _writeWakeByte(shutdown.write)
 
             do throws(ISO_9945.Kernel.Thread.Error) {
                 try thread.join()
             } catch {
 
             }
-
-            if readFd >= 0 {
-                _closeRawFd(readFd)
-            }
+            _ = consume shutdown
         }
         internal static func _watchdogBody(
-            shutdownReadFd: Int32,
+            shutdown: ISO_9945.Kernel.Poll.Entry,
             pid: ISO_9945.Kernel.Process.ID,
             timeoutMilliseconds: Int32
         ) {
-
-            var pollfdEntry = pollfd(fd: shutdownReadFd, events: Int16(POLLIN), revents: 0)
-            let result: Int32 = withUnsafeMutablePointer(to: &pollfdEntry) { ptr -> Int32 in
-
-                while true {
-                    let r = unsafe poll(ptr, 1, timeoutMilliseconds)
-                    if r >= 0 { return r }
-                    if errno != EINTR { return r }
+            var entries = [shutdown]
+            var ready = 0
+            polling: while true {
+                do throws(Error::Error) {
+                    ready = try POSIX.Kernel.Poll.poll(&entries, timeout: timeoutMilliseconds)
+                    break polling
+                } catch {
+                    if !error.code.isInterrupted { return }
                 }
             }
 
-            if result == 0 {
-
+            if ready == 0 {
                 do throws(ISO_9945.Kernel.Process.Error) {
-                    try POSIX.Kernel.Process.Kill.kill(
-                        pid,
-                        .kill
-                    )
+                    try POSIX.Kernel.Process.Kill.kill(pid, .kill)
                 } catch {
 
                 }
             }
+        }
+        internal static func _writeWakeByte(_ descriptor: borrowing ISO_9945.Kernel.Descriptor) {
+            let byte: [UInt8] = [0]
+            byte.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) in
+                do throws(ISO_9945.Kernel.IO.Write.Error) {
+                    _ = try unsafe POSIX.Kernel.IO.Write.write(descriptor, from: buffer)
+                } catch {
 
-        }
-        internal static func _writeWakeByte(_ fd: Int32) {
-            var byte: UInt8 = 0
-            withUnsafePointer(to: &byte) { ptr in
-                _ = unsafe write(fd, ptr, 1)
+                }
             }
-        }
-        internal static func _closeRawFd(_ fd: Int32) {
-            _ = close(fd)
         }
         internal static func _threadErrorCode(
             _ error: ISO_9945.Kernel.Thread.Error
