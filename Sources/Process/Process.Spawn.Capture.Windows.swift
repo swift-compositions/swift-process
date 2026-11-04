@@ -256,7 +256,7 @@
                                                 environment: envPtr.map {
                                                     unsafe UnsafeMutableRawPointer(mutating: $0)
                                                 },
-                                                directory: cwdPtr,
+                                                workingDirectory: cwdPtr,
                                                 actions: actions,
                                                 job: job
                                             )
@@ -269,7 +269,7 @@
                                             environment: envPtr.map {
                                                 unsafe UnsafeMutableRawPointer(mutating: $0)
                                             },
-                                            directory: cwdPtr,
+                                            workingDirectory: cwdPtr,
                                             actions: actions
                                         )
                                 }

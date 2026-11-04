@@ -31,7 +31,7 @@ extension Process {
             @usableFromInline
             internal init(processInfo: consuming Windows.`32`.Kernel.Process.Spawn.Result) {
 
-                self.id = processInfo.id
+                self.id = processInfo.processID
                 self._spawnResult = consume processInfo
             }
         #endif
