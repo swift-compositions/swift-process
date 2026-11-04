@@ -306,18 +306,18 @@
     }
 
     extension Process.Spawn.Test.Integration.Streams {
-            var output: Process.Stream {
-                switch self {
-                case .inherited, .stderr: .inherit
-                case .stdout, .both: .pipe
-                }
+        var output: Process.Stream {
+            switch self {
+            case .inherited, .stderr: .inherit
+            case .stdout, .both: .pipe
             }
+        }
 
-            var error: Process.Stream {
-                switch self {
-                case .inherited, .stdout: .inherit
-                case .stderr, .both: .pipe
-                }
+        var error: Process.Stream {
+            switch self {
+            case .inherited, .stdout: .inherit
+            case .stderr, .both: .pipe
             }
+        }
     }
 #endif

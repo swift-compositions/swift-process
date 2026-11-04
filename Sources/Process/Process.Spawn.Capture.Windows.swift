@@ -344,7 +344,6 @@
             return try drained.get()
         }
 
-
         @usableFromInline
         internal static func _drainRawHandle(
             _ rawValue: UInt
