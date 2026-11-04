@@ -8,12 +8,6 @@ extension Process {
 
     public enum Error: Swift.Error, Sendable, Equatable, Hashable {
 
-        #if !os(Windows)
-            public typealias Kernel = ISO_9945.Kernel.Process.Error
-        #else
-            public typealias Kernel = Windows.`32`.Kernel.Process.Error
-        #endif
-
         case invalidPath(index: Int)
 
         case executableNotFound(Swift.String)
@@ -30,4 +24,12 @@ extension Process {
 
         case platformUnsupported
     }
+}
+
+extension Process.Error {
+    #if !os(Windows)
+        public typealias Kernel = ISO_9945.Kernel.Process.Error
+    #else
+        public typealias Kernel = Windows.`32`.Kernel.Process.Error
+    #endif
 }

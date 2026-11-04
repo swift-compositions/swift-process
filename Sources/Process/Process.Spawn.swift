@@ -22,7 +22,7 @@ extension Process.Spawn {
             var actions = try _makeActions()
             let pid = try _spawnWithActions(configuration, actions: &actions)
 
-            return Process.Handle(processID: pid)
+            return Process.Handle(id: pid)
         #else
 
             let actions: Windows.`32`.Kernel.Process.Spawn.Actions
@@ -49,7 +49,7 @@ extension Process.Spawn {
         if configuration.stdin == .inherit
             && configuration.stdout == .inherit
             && configuration.stderr == .inherit
-            && configuration.workingDirectory == nil
+            && configuration.directory == nil
             && configuration.timeout == nil
         {
             let handle = try spawn(configuration)
@@ -62,8 +62,6 @@ extension Process.Spawn {
 }
 
 extension Process.Spawn {
-
-    @usableFromInline
     internal static func _checkSpawnSupports(
         _ configuration: Configuration
     ) throws(Process.Error) {
@@ -79,28 +77,22 @@ extension Process.Spawn {
         case .inherit: break
         case .pipe: throw .streamPolicyUnsupported
         }
-        if configuration.workingDirectory != nil {
+        if configuration.directory != nil {
             throw .streamPolicyUnsupported
         }
     }
 
     #if !os(Windows)
-
-        @usableFromInline
         internal static func _spawnVector(
             _ configuration: Configuration
         ) throws(Process.Error) -> [Swift.String] {
             let resolved = try Executable.resolve(configuration.executable)
             return [resolved, configuration.executable] + configuration.arguments
         }
-
-        @usableFromInline
         internal static func _spawnVectorIndex(_ index: Int) -> Int {
             index == 0 ? 0 : index - 1
         }
     #endif
-
-    @usableFromInline
     internal static func _flattenEnvironment(
         _ environment: [Swift.String: Swift.String]?
     ) -> [Swift.String] {
@@ -111,8 +103,6 @@ extension Process.Spawn {
             "\(key)=\(environment[key] ?? "")"
         }
     }
-
-    @usableFromInline
     internal static func _inheritedEnvironment() -> [Swift.String] {
         var result: [Swift.String] = []
         #if os(Windows)
@@ -136,3 +126,82 @@ extension Process.Spawn {
         return result
     }
 }
+
+#if os(Windows)
+    extension Process.Spawn {
+        internal static func capture(
+            _ configuration: Configuration,
+            timeout: Duration,
+            hooks: Capture.Hooks = .init()
+        ) throws(Process.Error) -> Process.Output {
+            switch (configuration.stdout, configuration.stderr) {
+            case (.inherit, .inherit):
+                let actions = try _makeActions()
+                let deadline = try Deadline(timeout: timeout, termination: hooks.termination)
+                let result = try _spawnWithActions(
+                    configuration,
+                    actions: actions,
+                    deadline: deadline
+                )
+                var capture = Capture(result: consume result, deadline: deadline, hooks: hooks)
+                defer { capture.cancel() }
+                return Process.Output(status: try capture.finish())
+
+            case (.pipe, .inherit):
+                var actions = try _makeActions()
+                let pipe = try _makePipe()
+                try _wireChildHandle(pipe.write, into: &actions, slot: .stdout)
+                let deadline = try Deadline(timeout: timeout, termination: hooks.termination)
+                let result = try _spawnWithActions(
+                    configuration,
+                    actions: actions,
+                    deadline: deadline
+                )
+                var capture = Capture(result: consume result, deadline: deadline, hooks: hooks)
+                defer { capture.cancel() }
+                let output = try capture.read(try _closeWriteEnd(pipe), stream: .stdout)
+                return Process.Output(status: try capture.finish(), stdout: output)
+
+            case (.inherit, .pipe):
+                var actions = try _makeActions()
+                let pipe = try _makePipe()
+                try _wireChildHandle(pipe.write, into: &actions, slot: .stderr)
+                let deadline = try Deadline(timeout: timeout, termination: hooks.termination)
+                let result = try _spawnWithActions(
+                    configuration,
+                    actions: actions,
+                    deadline: deadline
+                )
+                var capture = Capture(result: consume result, deadline: deadline, hooks: hooks)
+                defer { capture.cancel() }
+                let output = try capture.read(try _closeWriteEnd(pipe), stream: .stderr)
+                return Process.Output(status: try capture.finish(), stderr: output)
+
+            case (.pipe, .pipe):
+                var actions = try _makeActions()
+                let outputPipe = try _makePipe()
+                let errorPipe = try _makePipe()
+                try _wireChildHandle(outputPipe.write, into: &actions, slot: .stdout)
+                try _wireChildHandle(errorPipe.write, into: &actions, slot: .stderr)
+                let deadline = try Deadline(timeout: timeout, termination: hooks.termination)
+                let result = try _spawnWithActions(
+                    configuration,
+                    actions: actions,
+                    deadline: deadline
+                )
+                var capture = Capture(result: consume result, deadline: deadline, hooks: hooks)
+                defer { capture.cancel() }
+                let output = try _closeWriteEnd(outputPipe)
+                let error = try _closeWriteEnd(errorPipe)
+                try capture.start(consume error)
+                let captured = try capture.read(output, stream: .stdout)
+                let errors = try capture.collect()
+                return Process.Output(
+                    status: try capture.finish(),
+                    stdout: captured,
+                    stderr: errors
+                )
+            }
+        }
+    }
+#endif

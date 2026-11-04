@@ -4,11 +4,11 @@
     @testable import Process
 
     extension Process.Spawn {
-        @Suite("Process pipe capture + workingDirectory (Windows)")
+        @Suite
         struct Test {
 
-            @Test("cmd.exe /C 'echo hello' → captured stdout is 'hello\\r\\n'")
-            func `captureEchoStdout`() throws {
+            @Test
+            func `cmd.exe /C 'echo hello' → captured stdout is 'hellobackslash r' with a newline`() throws {
                 let output = try Process.Spawn.run(
                     Process.Spawn.Configuration(
                         executable: "C:\\Windows\\System32\\cmd.exe",
@@ -24,8 +24,8 @@
                 #expect(text == "hello\r\n")
             }
 
-            @Test("cmd.exe /C 'echo err 1>&2' → captured stderr is 'err \\r\\n'")
-            func `captureStderrFromCmd`() throws {
+            @Test
+            func `cmd.exe /C 'echo err 1>&2' → captured stderr is 'err backslash r' with a newline`() throws {
                 let output = try Process.Spawn.run(
                     Process.Spawn.Configuration(
                         executable: "C:\\Windows\\System32\\cmd.exe",
@@ -79,16 +79,14 @@
                 #expect(errText.contains("err"))
             }
 
-            @Test(
-                "cmd.exe /C 'echo %CD%' with workingDirectory: 'C:\\Windows' → cwd is C:\\Windows"
-            )
-            func `workingDirectoryCD`() throws {
+            @Test
+            func `cmd.exe /C 'echo %CD%' with directory: 'C:backslash Windows' → cwd is C:backslash Windows`() throws {
                 let output = try Process.Spawn.run(
                     Process.Spawn.Configuration(
                         executable: "C:\\Windows\\System32\\cmd.exe",
                         arguments: ["/C", "echo %CD%"],
                         stdout: .pipe,
-                        workingDirectory: "C:\\Windows"
+                        directory: "C:\\Windows"
                     )
                 )
                 #expect(output.status == .exited(code: 0))
@@ -134,13 +132,13 @@
             }
 
             @Test
-            func `spawn() rejects non-nil workingDirectory`() throws {
+            func `spawn() rejects non-nil directory`() throws {
                 do throws(Process.Error) {
                     _ = try Process.Spawn.spawn(
                         Process.Spawn.Configuration(
                             executable: "C:\\Windows\\System32\\cmd.exe",
                             arguments: ["/C", "exit 0"],
-                            workingDirectory: "C:\\Windows"
+                            directory: "C:\\Windows"
                         )
                     )
                     Issue.record("expected throw")

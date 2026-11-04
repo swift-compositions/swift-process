@@ -6,10 +6,8 @@
     extension Process.Handle {
         @Suite
         struct Unit {
-            @Test(
-                "wait() on a freshly spawned child returns its own exit code, not a stale/closed-HANDLE failure"
-            )
-            func `waitReturnsRealExitCodeAfterSpawn`() throws {
+            @Test
+            func `wait() on a freshly spawned child returns its own exit code, not a stale/closed-HANDLE failure`() throws {
                 let output = try Process.Spawn.run(
                     Process.Spawn.Configuration(
                         executable: "C:\\Windows\\System32\\cmd.exe",
@@ -19,11 +17,9 @@
                 #expect(output.status == .exited(code: 7))
             }
 
-            @Test(
-                "Several sequential spawn+wait cycles each observe their own exit code (no HANDLE-reuse corruption)"
-            )
-            func `sequentialSpawnsEachReturnTheirOwnExitCode`() throws {
-                for code in 0..<8 {
+            @Test
+            func `Several sequential spawn+wait cycles each observe their own exit code (no HANDLE-reuse corruption)`() throws {
+                for code in Array(0..<8) {
                     let output = try Process.Spawn.run(
                         Process.Spawn.Configuration(
                             executable: "C:\\Windows\\System32\\cmd.exe",

@@ -16,8 +16,6 @@ extension Process {
 
 #if !os(Windows)
     extension Process.Status {
-
-        @usableFromInline
         internal init?(_ status: ISO_9945.Kernel.Process.Status) {
             if status.exited, let code = status.exit.code {
                 self = .exited(code: code)

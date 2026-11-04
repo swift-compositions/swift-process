@@ -19,7 +19,7 @@
                 timeout: Duration,
                 termination:
                     @escaping @Sendable (borrowing Windows.`32`.Kernel.Process.Job)
-                    throws(Process.Error.Kernel) -> Void = { try $0.terminate(code: 1) }
+                    throws(Process.Error.Kernel) -> Void = { (job: borrowing Windows.`32`.Kernel.Process.Job) throws(Process.Error.Kernel) -> Void in try job.terminate(code: 1) }
             ) throws(Process.Error) {
                 do throws(Process.Error.Kernel) {
                     let job = try Windows.`32`.Kernel.Process.Job()
@@ -92,6 +92,7 @@
                     throw Self.failure(error)
                 }
                 return status
+
             case .expired: return .signaled(signal: 9)
             case .failure(let error): throw error
             case .waiting, .cancelled: throw .unrecognizedStatus
@@ -102,9 +103,11 @@
             let terminate = state.withLock {
                 switch $0.outcome {
                 case .complete: return false
+
                 case .waiting:
                     $0.outcome = .cancelled
                     return true
+
                 case .expired, .failure, .cancelled: return true
                 }
             }
@@ -180,6 +183,7 @@
                     } catch {
                         failure = Self.failure(error)
                     }
+
                 case .none: return nil
                 }
                 if let failure {

@@ -7,7 +7,9 @@
     import Testing
     @testable import Process
 
-    enum IsolationFixture {
+    @Suite struct Fixture {}
+
+    extension Fixture {
 
         struct Failure: Swift.Error, CustomStringConvertible {
             let description: Swift.String
@@ -76,6 +78,7 @@
             switch stdio {
             case .inherited:
                 break
+
             case .redirected, .closedStdin:
                 let path = Array(output.utf8) + [0]
                 for target in [ISO_9945.Kernel.Process.Spawn.Actions.Target.stdout, .stderr] {
@@ -117,32 +120,32 @@
 
             @Test
             func `one retained sentinel reaches an unisolated low-level child and not an isolated one with redirected stdio`() throws {
-                let control = try IsolationFixture.uniqueOutput()
+                let control = try Fixture.uniqueOutput()
                 defer { unlink(control) }
-                let isolated = try IsolationFixture.uniqueOutput()
+                let isolated = try Fixture.uniqueOutput()
                 defer { unlink(isolated) }
-                let sentinelPath = try IsolationFixture.uniqueOutput()
+                let sentinelPath = try Fixture.uniqueOutput()
                 defer { unlink(sentinelPath) }
                 let descriptor = open(sentinelPath, O_RDONLY)
-                guard descriptor >= 0 else { throw IsolationFixture.Failure(description: "open(\(sentinelPath)) failed, errno \(errno)") }
+                guard descriptor >= 0 else { throw Fixture.Failure(description: "open(\(sentinelPath)) failed, errno \(errno)") }
                 defer { close(descriptor) }
-                let expected = try IsolationFixture.identity(of: descriptor)
+                let expected = try Fixture.identity(of: descriptor)
 
-                let controlExit = try IsolationFixture.spawn(
-                    IsolationFixture.probe(descriptor),
+                let controlExit = try Fixture.spawn(
+                    Fixture.probe(descriptor),
                     output: control,
                     stdio: .redirected,
                     isolated: false
                 )
-                let isolatedExit = try IsolationFixture.spawn(
-                    IsolationFixture.probe(descriptor),
+                let isolatedExit = try Fixture.spawn(
+                    Fixture.probe(descriptor),
                     output: isolated,
                     stdio: .redirected,
                     isolated: true
                 )
-                let retained = try IsolationFixture.identity(of: descriptor)
-                let controlReport = try IsolationFixture.read(control)
-                let isolatedReport = try IsolationFixture.read(isolated)
+                let retained = try Fixture.identity(of: descriptor)
+                let controlReport = try Fixture.read(control)
+                let isolatedReport = try Fixture.read(isolated)
 
                 #expect(retained == expected, "the sentinel changed identity between spawns: \(expected) then \(retained)")
                 #expect(controlExit == .init(normal: true, code: 0), "control child \(controlExit): \(controlReport)")
@@ -153,16 +156,16 @@
 
             @Test
             func `an isolated low-level spawn keeps a closed stdin closed`() throws {
-                let output = try IsolationFixture.uniqueOutput()
+                let output = try Fixture.uniqueOutput()
                 defer { unlink(output) }
 
-                let exit = try IsolationFixture.spawn(
-                    IsolationFixture.probe(0),
+                let exit = try Fixture.spawn(
+                    Fixture.probe(0),
                     output: output,
                     stdio: .closedStdin,
                     isolated: true
                 )
-                let reported = try IsolationFixture.read(output)
+                let reported = try Fixture.read(output)
 
                 #expect(exit == .init(normal: true, code: 1), "closed-stdin child \(exit): \(reported)")
                 #expect(reported.contains("/dev/fd/0") && reported.contains("Bad file descriptor"), "unexpected probe output: \(reported)")
@@ -170,18 +173,18 @@
 
             @Test
             func `an isolated low-level spawn inherits the same stdio as an unisolated one`() throws {
-                let control = try IsolationFixture.uniqueOutput()
+                let control = try Fixture.uniqueOutput()
                 defer { unlink(control) }
-                let isolated = try IsolationFixture.uniqueOutput()
+                let isolated = try Fixture.uniqueOutput()
                 defer { unlink(isolated) }
 
                 let probe: (Swift.String) -> [Swift.String] = { output in
                     ["/bin/sh", "-c", "exec 7<&0 8>&1 9>&2; exec /usr/bin/stat -L -f %d:%i /dev/fd/7 /dev/fd/8 /dev/fd/9 > '\(output)' 2>&1"]
                 }
-                let controlExit = try IsolationFixture.spawn(probe(control), output: control, stdio: .inherited, isolated: false)
-                let isolatedExit = try IsolationFixture.spawn(probe(isolated), output: isolated, stdio: .inherited, isolated: true)
-                let controlReport = try IsolationFixture.read(control)
-                let isolatedReport = try IsolationFixture.read(isolated)
+                let controlExit = try Fixture.spawn(probe(control), output: control, stdio: .inherited, isolated: false)
+                let isolatedExit = try Fixture.spawn(probe(isolated), output: isolated, stdio: .inherited, isolated: true)
+                let controlReport = try Fixture.read(control)
+                let isolatedReport = try Fixture.read(isolated)
 
                 #expect(controlExit == .init(normal: true, code: 0), "unisolated child \(controlExit): \(controlReport)")
                 #expect(isolatedExit == .init(normal: true, code: 0), "isolated child \(isolatedExit): \(isolatedReport)")
@@ -193,12 +196,12 @@
             func `a Process.Spawn child does not see the retained sentinel while stdio stays captured`() throws {
                 let sentinel = try POSIX.Kernel.Pipe.pipe()
                 let descriptor = sentinel.read._rawValue
-                _ = try IsolationFixture.identity(of: descriptor)
+                _ = try Fixture.identity(of: descriptor)
 
                 let output = try Process.Spawn.run(
                     Process.Spawn.Configuration(
                         executable: "/usr/bin/stat",
-                        arguments: Array(IsolationFixture.probe(descriptor).dropFirst()),
+                        arguments: Array(Fixture.probe(descriptor).dropFirst()),
                         stdout: .pipe,
                         stderr: .pipe
                     )

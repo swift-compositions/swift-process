@@ -4,11 +4,11 @@
     @testable import Process
 
     extension Process.Spawn {
-        @Suite("Process pipe capture + workingDirectory")
+        @Suite
         struct Test {
 
-            @Test("echo hello → captured stdout is 'hello\\n'")
-            func `captureEchoStdout`() throws {
+            @Test
+            func `echo hello → captured stdout is 'hello' with a newline`() throws {
                 let output = try Process.Spawn.run(
                     Process.Spawn.Configuration(
                         executable: "/bin/echo",
@@ -24,8 +24,8 @@
                 #expect(text == "hello\n")
             }
 
-            @Test("sh -c 'echo err >&2' → captured stderr is 'err\\n'")
-            func `captureStderrFromSubshell`() throws {
+            @Test
+            func `sh -c 'echo err >&2' → captured stderr is 'err' with a newline`() throws {
                 let output = try Process.Spawn.run(
                     Process.Spawn.Configuration(
                         executable: "/bin/sh",
@@ -60,12 +60,12 @@
             }
 
             @Test
-            func `pwd with workingDirectory: '/tmp' → child cwd is /tmp`() throws {
+            func `pwd with directory: '/tmp' → child cwd is /tmp`() throws {
                 let output = try Process.Spawn.run(
                     Process.Spawn.Configuration(
                         executable: "/bin/pwd",
                         stdout: .pipe,
-                        workingDirectory: "/tmp"
+                        directory: "/tmp"
                     )
                 )
                 #expect(output.status == .exited(code: 0))
@@ -109,12 +109,12 @@
             }
 
             @Test
-            func `spawn() rejects non-nil workingDirectory`() throws {
+            func `spawn() rejects non-nil directory`() throws {
                 do throws(Process.Error) {
                     _ = try Process.Spawn.spawn(
                         Process.Spawn.Configuration(
                             executable: "/usr/bin/true",
-                            workingDirectory: "/tmp"
+                            directory: "/tmp"
                         )
                     )
                     Issue.record("expected throw")

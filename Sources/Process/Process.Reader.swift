@@ -10,10 +10,10 @@
             private let descriptor: ISO_9945.Kernel.Descriptor
 
             internal init(
-                processID: ISO_9945.Kernel.Process.ID,
+                id: ISO_9945.Kernel.Process.ID,
                 descriptor: consuming ISO_9945.Kernel.Descriptor
             ) {
-                self.id = processID
+                self.id = id
                 self.descriptor = descriptor
             }
         }
@@ -44,7 +44,7 @@
         }
 
         public func wait() throws(Process.Error) -> Process.Status {
-            try Process.Handle(processID: id).wait()
+            try Process.Handle(id: id).wait()
         }
     }
 
@@ -62,9 +62,9 @@
             } catch {
                 throw .spawn(error)
             }
-            try _addChdir(&actions, cwd: configuration.workingDirectory)
+            try _addChdir(&actions, cwd: configuration.directory)
             let pid = try _spawnWithActions(configuration, actions: &actions)
-            return Process.Reader(processID: pid, descriptor: try _closeWriteEnd(pipe))
+            return Process.Reader(id: pid, descriptor: try _closeWriteEnd(pipe))
         }
     }
 #endif

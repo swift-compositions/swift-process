@@ -38,6 +38,16 @@ let package = Package(
                 ),
 
                 .product(
+                    name: "POSIX Kernel File",
+                    package: "swift-posix",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .visionOS, .linux])
+                ),
+                .product(
+                    name: "POSIX Kernel Process",
+                    package: "swift-posix",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .visionOS, .linux])
+                ),
+                .product(
                     name: "ISO 9945 Kernel Poll",
                     package: "swift-iso-9945",
                     condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .visionOS, .linux])
@@ -64,7 +74,7 @@ let package = Package(
         .testTarget(
             name: "Process Tests",
             dependencies: [
-                "Process",
+                .target(name: "Process"),
                 .product(
                     name: "Windows Kernel Process",
                     package: "swift-windows",

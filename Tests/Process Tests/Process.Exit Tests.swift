@@ -3,7 +3,7 @@ import Testing
 @testable import Process
 
 extension Process {
-    @Suite("Process.exit structural tests")
+    @Suite
     struct Test {
         @Test
         func `Process.exit(_:) is reachable as a typed function value`() {

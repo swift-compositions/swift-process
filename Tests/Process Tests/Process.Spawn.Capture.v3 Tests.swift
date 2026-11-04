@@ -4,7 +4,7 @@
     @testable import Process
 
     extension Process.Spawn.Test {
-        @Suite("Process v3: concurrent drain + timeout")
+        @Suite
         struct V3 {
 
             @Test(.timeLimit(.minutes(1)))

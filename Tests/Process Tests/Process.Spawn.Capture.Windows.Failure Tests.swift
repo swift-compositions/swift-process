@@ -51,6 +51,7 @@
                 case .stdout:
                     ready.wait()
                     return .failure(.capture(.win32(6)))
+
                 case .stderr:
                     ready.release()
                     return Process.Spawn._drainRawHandle(raw)

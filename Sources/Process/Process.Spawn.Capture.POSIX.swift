@@ -14,8 +14,6 @@
     #endif
 
     extension Process.Spawn {
-
-        @usableFromInline
         internal static func _runWithCapture(
             _ configuration: Configuration
         ) throws(Process.Error) -> Process.Output {
@@ -40,17 +38,15 @@
     }
 
     extension Process.Spawn {
-
-        @usableFromInline
         internal static func _runWithoutPipes(
             _ configuration: Configuration
         ) throws(Process.Error) -> Process.Output {
             var actions = try _makeActions()
-            try _addChdir(&actions, cwd: configuration.workingDirectory)
+            try _addChdir(&actions, cwd: configuration.directory)
 
             let pid = try _spawnWithActions(configuration, actions: &actions)
             let watchdog = try _armWatchdog(pid: pid, timeout: configuration.timeout)
-            let handle = Process.Handle(processID: pid)
+            let handle = Process.Handle(id: pid)
             let status: Process.Status
             do throws(Process.Error) {
                 status = try handle.wait()
@@ -61,8 +57,6 @@
             _disarmWatchdog(watchdog)
             return Process.Output(status: status)
         }
-
-        @usableFromInline
         internal static func _runWithStdoutPipe(
             _ configuration: Configuration
         ) throws(Process.Error) -> Process.Output {
@@ -76,7 +70,7 @@
                 throw .spawn(error)
             }
 
-            try _addChdir(&actions, cwd: configuration.workingDirectory)
+            try _addChdir(&actions, cwd: configuration.directory)
 
             let pid = try _spawnWithActions(configuration, actions: &actions)
             let stdoutRead = try _closeWriteEnd(stdoutPipe)
@@ -90,7 +84,7 @@
                 throw error
             }
 
-            let handle = Process.Handle(processID: pid)
+            let handle = Process.Handle(id: pid)
             let status: Process.Status
             do throws(Process.Error) {
                 status = try handle.wait()
@@ -101,8 +95,6 @@
             _disarmWatchdog(watchdog)
             return Process.Output(status: status, stdout: captured, stderr: nil)
         }
-
-        @usableFromInline
         internal static func _runWithStderrPipe(
             _ configuration: Configuration
         ) throws(Process.Error) -> Process.Output {
@@ -116,7 +108,7 @@
                 throw .spawn(error)
             }
 
-            try _addChdir(&actions, cwd: configuration.workingDirectory)
+            try _addChdir(&actions, cwd: configuration.directory)
 
             let pid = try _spawnWithActions(configuration, actions: &actions)
             let stderrRead = try _closeWriteEnd(stderrPipe)
@@ -130,7 +122,7 @@
                 throw error
             }
 
-            let handle = Process.Handle(processID: pid)
+            let handle = Process.Handle(id: pid)
             let status: Process.Status
             do throws(Process.Error) {
                 status = try handle.wait()
@@ -141,8 +133,6 @@
             _disarmWatchdog(watchdog)
             return Process.Output(status: status, stdout: nil, stderr: captured)
         }
-
-        @usableFromInline
         internal static func _runWithBothPipes(
             _ configuration: Configuration
         ) throws(Process.Error) -> Process.Output {
@@ -159,7 +149,7 @@
                 throw .spawn(error)
             }
 
-            try _addChdir(&actions, cwd: configuration.workingDirectory)
+            try _addChdir(&actions, cwd: configuration.directory)
 
             let pid = try _spawnWithActions(configuration, actions: &actions)
             let stdoutRead = try _closeWriteEnd(stdoutPipe)
@@ -177,7 +167,7 @@
                 throw error
             }
 
-            let handle = Process.Handle(processID: pid)
+            let handle = Process.Handle(id: pid)
             let status: Process.Status
             do throws(Process.Error) {
                 status = try handle.wait()
@@ -195,7 +185,6 @@
     }
 
     extension Process.Spawn {
-        @usableFromInline
         internal static func _makeActions() throws(Process.Error)
             -> ISO_9945.Kernel.Process.Spawn.Actions
         {
@@ -205,8 +194,6 @@
                 throw .spawn(error)
             }
         }
-
-        @usableFromInline
         internal static func _makePipe() throws(Process.Error) -> ISO_9945.Kernel.Pipe.Descriptors {
             do throws(ISO_9945.Kernel.Pipe.Error) {
                 return try POSIX.Kernel.Pipe.pipe()
@@ -214,8 +201,6 @@
                 throw .capture(error.code)
             }
         }
-
-        @usableFromInline
         internal static func _addChdir(
             _ actions: inout ISO_9945.Kernel.Process.Spawn.Actions,
             cwd: Swift.String?
@@ -236,8 +221,6 @@
                 }
             }
         }
-
-        @usableFromInline
         internal static func _spawnWithActions(
             _ configuration: Configuration,
             actions: inout ISO_9945.Kernel.Process.Spawn.Actions
@@ -278,8 +261,6 @@
                 }
             }
         }
-
-        @usableFromInline
         internal static func _closeErrorCode(
             _ error: ISO_9945.Kernel.Close.Error
         ) -> Error::Error.Code {
@@ -288,8 +269,6 @@
             case .platform(let e): return e.code
             }
         }
-
-        @usableFromInline
         internal static func _closeWriteEnd(
             _ pipe: consuming ISO_9945.Kernel.Pipe.Descriptors
         ) throws(Process.Error) -> ISO_9945.Kernel.Descriptor {
@@ -299,8 +278,6 @@
                 throw .capture(_closeErrorCode(error))
             }
         }
-
-        @usableFromInline
         internal static func _drainBytes(
             _ descriptor: consuming ISO_9945.Kernel.Descriptor
         ) throws(Process.Error) -> [UInt8] {
@@ -310,8 +287,6 @@
                 throw .capture(error.code)
             }
         }
-
-        @usableFromInline
         internal static func _drain(
             _ descriptor: consuming ISO_9945.Kernel.Descriptor
         ) throws(ISO_9945.Kernel.IO.Read.Error) -> [UInt8] {
@@ -333,8 +308,6 @@
     }
 
     extension Process.Spawn {
-
-        @usableFromInline
         internal static func _drainConcurrently(
             stdout stdoutDescriptor: consuming ISO_9945.Kernel.Descriptor,
             stderr stderrDescriptor: consuming ISO_9945.Kernel.Descriptor
@@ -423,27 +396,6 @@
     }
 
     extension Process.Spawn {
-
-        @usableFromInline
-        internal struct Watchdog: ~Copyable {
-            @usableFromInline
-            internal var thread: ISO_9945.Kernel.Thread.Handle?
-
-            @usableFromInline
-            internal var shutdownWriteFd: Int32
-
-            @usableFromInline
-            internal var shutdownReadFd: Int32
-
-            @usableFromInline
-            internal init() {
-                self.thread = nil
-                self.shutdownWriteFd = -1
-                self.shutdownReadFd = -1
-            }
-        }
-
-        @usableFromInline
         internal static func _armWatchdog(
             pid: ISO_9945.Kernel.Process.ID,
             timeout: Duration?
@@ -465,14 +417,13 @@
             let readFd = fds.0
             let writeFd = fds.1
             let timeoutMs = _durationToPollMilliseconds(timeout)
-            let pidValue: Int32 = pid.rawValue
 
             let thread: ISO_9945.Kernel.Thread.Handle
             do throws(ISO_9945.Kernel.Thread.Error) {
                 thread = try POSIX.Kernel.Thread.create {
                     _watchdogBody(
                         shutdownReadFd: readFd,
-                        pid: pidValue,
+                        pid: pid,
                         timeoutMilliseconds: timeoutMs
                     )
                 }
@@ -489,8 +440,6 @@
             watchdog.shutdownReadFd = readFd
             return watchdog
         }
-
-        @usableFromInline
         internal static func _disarmWatchdog(_ watchdog: consuming Watchdog) {
 
             let writeFd = watchdog.shutdownWriteFd
@@ -518,11 +467,9 @@
                 _closeRawFd(readFd)
             }
         }
-
-        @usableFromInline
         internal static func _watchdogBody(
             shutdownReadFd: Int32,
-            pid: Int32,
+            pid: ISO_9945.Kernel.Process.ID,
             timeoutMilliseconds: Int32
         ) {
 
@@ -540,7 +487,7 @@
 
                 do throws(ISO_9945.Kernel.Process.Error) {
                     try POSIX.Kernel.Process.Kill.kill(
-                        ISO_9945.Kernel.Process.ID(rawValue: pid),
+                        pid,
                         .kill
                     )
                 } catch {
@@ -549,21 +496,15 @@
             }
 
         }
-
-        @usableFromInline
         internal static func _writeWakeByte(_ fd: Int32) {
             var byte: UInt8 = 0
             withUnsafePointer(to: &byte) { ptr in
                 _ = unsafe write(fd, ptr, 1)
             }
         }
-
-        @usableFromInline
         internal static func _closeRawFd(_ fd: Int32) {
             _ = close(fd)
         }
-
-        @usableFromInline
         internal static func _threadErrorCode(
             _ error: ISO_9945.Kernel.Thread.Error
         ) -> Error::Error.Code {
@@ -575,8 +516,6 @@
             case .keySet(let code): return code
             }
         }
-
-        @usableFromInline
         internal static func _durationToPollMilliseconds(_ duration: Duration) -> Int32 {
             let components = duration.components
             let attosecondsPerMs: Int64 = 1_000_000_000_000_000

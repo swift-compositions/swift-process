@@ -4,7 +4,7 @@
     @testable import Process
 
     extension Process.Spawn.Test {
-        @Suite("Process spawn smoke tests (Windows)")
+        @Suite
         struct Windows {
             @Test
             func `Spawning cmd.exe /C 'exit 0' returns exit code 0`() throws {

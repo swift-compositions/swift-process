@@ -209,7 +209,7 @@
 
             let envBlock: [WCHAR]? = _flattenWideEnvironment(configuration.environment)
 
-            let cwdUnits: [WCHAR]? = configuration.workingDirectory.map { dir in
+            let cwdUnits: [WCHAR]? = configuration.directory.map { dir in
                 var units = Array(dir.utf16)
                 units.append(0)
                 return units
@@ -256,7 +256,7 @@
                                                 environment: envPtr.map {
                                                     unsafe UnsafeMutableRawPointer(mutating: $0)
                                                 },
-                                                workingDirectory: cwdPtr,
+                                                directory: cwdPtr,
                                                 actions: actions,
                                                 job: job
                                             )
@@ -269,7 +269,7 @@
                                             environment: envPtr.map {
                                                 unsafe UnsafeMutableRawPointer(mutating: $0)
                                             },
-                                            workingDirectory: cwdPtr,
+                                            directory: cwdPtr,
                                             actions: actions
                                         )
                                 }
@@ -344,14 +344,6 @@
             return try drained.get()
         }
 
-        @usableFromInline
-        internal final class _Drain: @unchecked Sendable {
-            @usableFromInline
-            internal var result: Result<[UInt8], Process.Error> = .success([])
-
-            @usableFromInline
-            internal init() {}
-        }
 
         @usableFromInline
         internal static func _drainRawHandle(

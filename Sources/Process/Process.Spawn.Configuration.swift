@@ -14,7 +14,7 @@ extension Process.Spawn {
 
         public let stderr: Process.Stream
 
-        public let workingDirectory: Swift.String?
+        public let directory: Swift.String?
 
         public let timeout: Duration?
 
@@ -25,7 +25,7 @@ extension Process.Spawn {
             stdin: Process.Stream = .inherit,
             stdout: Process.Stream = .inherit,
             stderr: Process.Stream = .inherit,
-            workingDirectory: Swift.String? = nil,
+            directory: Swift.String? = nil,
             timeout: Duration? = nil
         ) {
             self.executable = executable
@@ -34,7 +34,7 @@ extension Process.Spawn {
             self.stdin = stdin
             self.stdout = stdout
             self.stderr = stderr
-            self.workingDirectory = workingDirectory
+            self.directory = directory
             self.timeout = timeout
         }
     }
