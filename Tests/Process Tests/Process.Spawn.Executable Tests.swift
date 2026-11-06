@@ -2,7 +2,9 @@ import Testing
 
 @testable import Process
 
-extension Process.Spawn.Executable {
+enum `Process.Spawn.Executable Tests` {}
+
+extension `Process.Spawn.Executable Tests` {
 
     @Suite
     struct Test {

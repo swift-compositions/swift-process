@@ -2,7 +2,9 @@ import Testing
 
 @testable import Process
 
-extension Process.Spawn {
+enum `Process.Spawn Tests` {}
+
+extension `Process.Spawn Tests` {
     @Suite
     struct `Edge Case` {
 

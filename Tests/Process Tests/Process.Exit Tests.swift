@@ -2,7 +2,9 @@ import Testing
 
 @testable import Process
 
-extension Process {
+enum `Process Tests` {}
+
+extension `Process Tests` {
     @Suite
     struct Test {
         @Test
