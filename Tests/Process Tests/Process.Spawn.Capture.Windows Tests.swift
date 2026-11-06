@@ -1,5 +1,6 @@
 #if os(Windows)
 
+    import Path
     import Testing
     @testable import Process
 
@@ -86,7 +87,7 @@
                         executable: "C:\\Windows\\System32\\cmd.exe",
                         arguments: ["/C", "echo %CD%"],
                         stdout: .pipe,
-                        directory: "C:\\Windows"
+                        directory: try Path::Path(validating: "C:\\Windows")
                     )
                 )
                 #expect(output.status == .exited(code: 0))
@@ -133,12 +134,13 @@
 
             @Test
             func `spawn() rejects non-nil directory`() throws {
+                let directory = try Path::Path(validating: "C:\\Windows")
                 do throws(Process.Error) {
                     _ = try Process.Spawn.spawn(
                         Process.Spawn.Configuration(
                             executable: "C:\\Windows\\System32\\cmd.exe",
                             arguments: ["/C", "exit 0"],
-                            directory: "C:\\Windows"
+                            directory: directory
                         )
                     )
                     Issue.record("expected throw")

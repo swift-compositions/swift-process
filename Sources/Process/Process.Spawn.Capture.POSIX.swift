@@ -195,22 +195,13 @@
         }
         internal static func _addChdir(
             _ actions: inout ISO_9945.Kernel.Process.Spawn.Actions,
-            cwd: Swift.String?
+            cwd: Path::Path?
         ) throws(Process.Error) {
             guard let cwd else { return }
-            do throws(Path.String.Error<ISO_9945.Kernel.Process.Error>) {
-                try Path.scope(cwd) {
-                    (borrowed: borrowing Path.Borrowed) throws(ISO_9945.Kernel.Process.Error) in
-                    try unsafe actions.add(chdir: borrowed.pointer)
-                }
+            do throws(ISO_9945.Kernel.Process.Error) {
+                try unsafe actions.add(chdir: cwd.view.pointer)
             } catch {
-                switch error {
-                case .conversion(.interiorNUL(let index)):
-                    throw .invalidPath(index: index)
-
-                case .body(let posixError):
-                    throw .spawn(posixError)
-                }
+                throw .spawn(error)
             }
         }
         internal static func _spawnWithActions(

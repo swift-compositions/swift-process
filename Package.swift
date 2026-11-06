@@ -75,6 +75,7 @@ let package = Package(
             name: "Process Tests",
             dependencies: [
                 .target(name: "Process"),
+                .product(name: "Path", package: "swift-path"),
                 .product(
                     name: "Windows Kernel Process",
                     package: "swift-windows",

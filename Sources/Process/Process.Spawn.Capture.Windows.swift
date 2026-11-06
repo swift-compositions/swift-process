@@ -1,5 +1,6 @@
 #if os(Windows)
 
+    internal import Path
     internal import Windows_Kernel_File
     internal import Windows_Kernel_Process
     internal import Windows_Kernel_Thread
@@ -210,7 +211,7 @@
             let envBlock: [WCHAR]? = _flattenWideEnvironment(configuration.environment)
 
             let cwdUnits: [WCHAR]? = configuration.directory.map { dir in
-                var units = Array(dir.utf16)
+                var units = Array(dir.string.utf16)
                 units.append(0)
                 return units
             }

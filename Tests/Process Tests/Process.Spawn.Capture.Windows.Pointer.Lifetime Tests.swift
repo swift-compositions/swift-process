@@ -1,5 +1,6 @@
 #if os(Windows)
 
+    import Path
     import Testing
     @testable import Process
 
@@ -17,7 +18,7 @@
                             "REGRESSION_MARKER": "f-003-marker",
                         ],
                         stdout: .pipe,
-                        directory: "C:\\Windows\\System32"
+                        directory: try Path::Path(validating: "C:\\Windows\\System32")
                     )
                 )
                 #expect(output.status == .exited(code: 0))

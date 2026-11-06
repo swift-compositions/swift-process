@@ -1,3 +1,5 @@
+public import Path
+
 extension Process.Spawn {
 
     public struct Configuration: Sendable {
@@ -14,7 +16,7 @@ extension Process.Spawn {
 
         public let stderr: Process.Stream
 
-        public let directory: Swift.String?
+        public let directory: Path::Path?
 
         public let timeout: Duration?
 
@@ -25,7 +27,7 @@ extension Process.Spawn {
             stdin: Process.Stream = .inherit,
             stdout: Process.Stream = .inherit,
             stderr: Process.Stream = .inherit,
-            directory: Swift.String? = nil,
+            directory: Path::Path? = nil,
             timeout: Duration? = nil
         ) {
             self.executable = executable
