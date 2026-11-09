@@ -18,6 +18,12 @@ extension Process.Spawn {
 
         public let directory: Path::Path?
 
+        /// The time `Process.Spawn.run(_:)` allows the child before terminating it.
+        ///
+        /// On Windows the child runs in a job object and the timeout terminates the whole job,
+        /// descendants included. On POSIX systems the timeout sends `SIGKILL` to the direct child
+        /// only: a descendant that inherited a captured pipe keeps it open, and `run(_:)` returns
+        /// only once every holder of the pipe has closed it or exited.
         public let timeout: Duration?
 
         public init(

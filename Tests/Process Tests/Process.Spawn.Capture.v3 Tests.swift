@@ -183,6 +183,32 @@
                 #expect(bytes.count > 0, "expected non-empty capture")
             }
 
+            @Test(
+                .timeLimit(.minutes(1))
+            )
+            func `timeout kills only the direct child, so a grandchild holding the pipe delays the return`()
+                throws
+            {
+                let started = ContinuousClock().now
+                let output = try Process.Spawn.run(
+                    Process.Spawn.Configuration(
+                        executable: "/bin/sh",
+                        arguments: ["-c", "sleep 2 & exec sleep 30"],
+                        stdout: .pipe,
+                        timeout: .milliseconds(200)
+                    )
+                )
+                let elapsed = ContinuousClock().now - started
+
+                guard case .signaled(let signal) = output.status else {
+                    Issue.record("expected .signaled, got \(output.status)")
+                    return
+                }
+                #expect(signal == 9)
+                #expect(elapsed >= .milliseconds(1500), "elapsed: \(elapsed)")
+                #expect(elapsed < .seconds(10), "elapsed: \(elapsed)")
+            }
+
             @Test
             func `nil timeout preserves indefinite-wait behavior`() throws {
                 let configuration = Process.Spawn.Configuration(
