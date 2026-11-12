@@ -37,7 +37,7 @@
                 self.descriptor = consume descriptor
             } catch {
                 switch error {
-                case .create(let failure): throw .capture(failure.code)
+                case .create(let failure), .index(let failure): throw .capture(failure.code)
                 }
             }
         }

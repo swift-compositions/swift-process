@@ -107,7 +107,7 @@
                 }
             } catch {
                 switch error {
-                case .create(let err):
+                case .create(let err), .index(let err):
                     throw .capture(err.code)
                 }
             }
